@@ -70,7 +70,7 @@ def check_auth():
                     'id': user.id,
                     'email': user.email,
                     'role': user.role,
-                    'profile_img': user.role == 'candidate' and candidate.profile_picture
+                    'profile_img': candidate.profile_picture if user.role == 'candidate' and candidate.profile_picture else '' 
                 }
             })
     return jsonify({'error': 'Not authenticated'}), 401

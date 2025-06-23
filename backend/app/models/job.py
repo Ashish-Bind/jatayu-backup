@@ -15,7 +15,8 @@ class JobDescription(db.Model):
     description = db.Column(db.Text)
     duration = db.Column(db.Integer, nullable=False)
     num_questions = db.Column(db.Integer, nullable=False)
-    schedule = db.Column(db.DateTime, nullable=False)
+    schedule_start = db.Column(db.DateTime, nullable=False)
+    schedule_end = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships

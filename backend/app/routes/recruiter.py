@@ -41,7 +41,8 @@ def get_assessments():
             'job_id': job.job_id,
             'job_title': job.job_title,
             'company': job.company,
-            'schedule': job.schedule.isoformat() if job.schedule else None,
+            'schedule_start': job.schedule_start.isoformat() if job.schedule_start else None,
+            'schedule_end': job.schedule_end.isoformat() if job.schedule_end else None,
             'num_questions': job.num_questions,
             'duration': job.duration,
             'experience_min': job.experience_min,
@@ -53,7 +54,7 @@ def get_assessments():
                 for rs in job.required_skills
             ]
         }
-        if job.schedule < current_time:
+        if job.schedule_start and job.schedule_end and job.schedule_end < current_time:
             past_assessments.append(assessment)
         else:
             active_assessments.append(assessment)

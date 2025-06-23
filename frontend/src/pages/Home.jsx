@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Zap,
@@ -20,6 +20,28 @@ import {
 import Navbar from '../components/Navbar'
 
 const LandingPage = () => {
+  const featuresRef = useRef(null)
+  const testimonialsRef = useRef(null)
+  const howItWorksRef = useRef(null)
+
+  const scrollToFeatures = () => {
+    if (featuresRef.current) {
+      featuresRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  const scrollToTestimonials = () => {
+    if (testimonialsRef.current) {
+      testimonialsRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  const scrollToHowItWorks = () => {
+    if (howItWorksRef.current) {
+      howItWorksRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   // Testimonial data
   const testimonials = [
     {
@@ -134,12 +156,16 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Navigation */}
-      <Navbar />
+      <Navbar
+        scrollToFeatures={scrollToFeatures}
+        scrollToHowItWorks={scrollToHowItWorks}
+        scrollToTestimonials={scrollToTestimonials}
+      />
 
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-24">
         <div className="text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+          <h1 className="font-mono text-4xl md:text-6xl font-extrabold text-gray-900 mb-6">
             Intelligent MCQ Generation <br />& Assessment Platform
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -150,13 +176,13 @@ const LandingPage = () => {
           <div className="mt-12 flex flex-col sm:flex-row justify-center gap-4">
             <Link
               to="/candidate/signup"
-              className="px-6 py-3 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center gap-2"
+              className="font-mono px-6 py-3 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center gap-2"
             >
               Get Started as Candidate <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               to="/recruiter/login"
-              className="px-6 py-3 rounded-md text-sm font-medium text-indigo-600 bg-white border border-indigo-600 hover:bg-indigo-50 flex items-center justify-center gap-2"
+              className="font-mono px-6 py-3 rounded-md text-sm font-medium text-indigo-600 bg-white border border-indigo-600 hover:bg-indigo-50 flex items-center justify-center gap-2"
             >
               Recruiter Login <ChevronRight className="w-4 h-4" />
             </Link>
@@ -193,7 +219,7 @@ const LandingPage = () => {
       </div> */}
 
       {/* Features Section */}
-      <div id="features" className="py-16 bg-indigo-50">
+      <div id="features" className="py-16 bg-indigo-50" ref={featuresRef}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900">
@@ -210,7 +236,7 @@ const LandingPage = () => {
                 className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="mb-4">{feature.icon}</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-mono font-medium text-gray-900 mb-2">
                   {feature.title}
                 </h3>
                 <p className="text-gray-600">{feature.description}</p>
@@ -221,7 +247,7 @@ const LandingPage = () => {
       </div>
 
       {/* How It Works Section */}
-      <div id="how-it-works" className="py-16 bg-white">
+      <div id="how-it-works" className="py-16 bg-white" ref={howItWorksRef}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900">How It Works</h2>
@@ -248,7 +274,11 @@ const LandingPage = () => {
       </div>
 
       {/* Testimonials Section */}
-      <div id="testimonials" className="py-16 bg-indigo-50">
+      <div
+        id="testimonials"
+        className="py-16 bg-indigo-50"
+        ref={testimonialsRef}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900">

@@ -18,6 +18,15 @@ export default {
         },
       },
     },
+    fontFamily: {
+      inter: ['Inter', 'sans-serif'],
+      'open-sans': ['Open Sans', 'sans-serif'],
+      poppins: ['Poppins', 'sans-serif'],
+      'source-sans-pro': ['Source Sans Pro', 'sans-serif'],
+      'fira-code': ['Fira Code', 'monospace'],
+      sans: ['Space Grotesk', 'sans-serif'],
+      mono: ['Space Grotesk', 'sans-serif'],
+    },
   },
   plugins: [],
 }

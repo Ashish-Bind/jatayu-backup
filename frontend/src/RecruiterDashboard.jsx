@@ -18,9 +18,11 @@ const RecruiterDashboard = () => {
     experience_max: '',
     duration: '',
     num_questions: '',
-    schedule: '',
+    schedule_start: '',
+    schedule_end: '',
     degree_required: '',
     description: '',
+    customized_prompt: '',
     skills: [],
   })
   const [newSkill, setNewSkill] = useState({ name: '', priority: 'low' })
@@ -133,16 +135,16 @@ const RecruiterDashboard = () => {
 
   const currentDate = new Date()
   const activeAssessments = assessments.filter(
-    (assessment) => new Date(assessment.schedule) >= currentDate
+    (assessment) => new Date(assessment.schedule_end) >= currentDate
   )
   const pastAssessments = assessments.filter(
-    (assessment) => new Date(assessment.schedule) < currentDate
+    (assessment) => new Date(assessment.schedule_start) < currentDate
   )
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">
           Recruiter Dashboard
         </h1>
@@ -302,21 +304,53 @@ const RecruiterDashboard = () => {
                 </div>
                 <div>
                   <label
-                    htmlFor="schedule"
+                    htmlFor="schedule_start"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Schedule
+                    Start Date
                   </label>
                   <input
                     type="datetime-local"
-                    name="schedule"
-                    id="schedule"
+                    name="schedule_start"
+                    id="schedule_start"
                     value={
-                      formData.schedule ? formData.schedule.slice(0, 16) : ''
+                      formData.schedule_start
+                        ? formData.schedule_start.slice(0, 16)
+                        : ''
                     }
                     onChange={(e) => {
                       const date = new Date(e.target.value)
-                      setFormData({ ...formData, schedule: date.toISOString() })
+                      setFormData({
+                        ...formData,
+                        schedule_start: date.toISOString(),
+                      })
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-indigo-600 focus:border-indigo-600 text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="schedule_end"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    End Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="schedule_end"
+                    id="schedule_end"
+                    value={
+                      formData.schedule_end
+                        ? formData.schedule_end.slice(0, 16)
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const date = new Date(e.target.value)
+                      setFormData({
+                        ...formData,
+                        schedule_end: date.toISOString(),
+                      })
                     }}
                     className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-indigo-600 focus:border-indigo-600 text-sm"
                     required
@@ -336,16 +370,15 @@ const RecruiterDashboard = () => {
                     value={formData.degree_required}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-indigo-600 focus:border-indigo-600 text-sm placeholder-gray-400"
-                    placeholder="B.Tech in Computer Science"
+                    placeholder="B.Tech in Information Technology"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  268{' '}
                   <label
                     htmlFor="description"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Description
+                    Job Description
                   </label>
                   <textarea
                     name="description"
@@ -355,6 +388,23 @@ const RecruiterDashboard = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-indigo-600 focus:border-indigo-600 text-sm placeholder-gray-400"
                     rows="4"
                     placeholder="Describe the job role and requirements..."
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Customized Prompt
+                  </label>
+                  <textarea
+                    name="description"
+                    id="description"
+                    value={formData.customized_prompt}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-indigo-600 focus:border-indigo-600 text-sm placeholder-gray-400"
+                    rows="4"
+                    placeholder="I want code snippet based questions..."
                   />
                 </div>
                 <div className="sm:col-span-2">

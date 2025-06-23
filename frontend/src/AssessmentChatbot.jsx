@@ -22,6 +22,7 @@ import {
   Star,
   BookOpen,
   TrendingUp,
+  AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 import Navbar from './components/Navbar'
@@ -48,7 +49,79 @@ const AssessmentChatbot = () => {
   const chatContainerRef = useRef(null)
   const currentMcqId = useRef(null)
 
+  const [fullscreenWarnings, setFullscreenWarnings] = useState(0)
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState(false)
+  const [tabSwitches, setTabSwitches] = useState(0)
+  const [proctoringRemarks, setProctoringRemarks] = useState([])
+  const MAX_FULLSCREEN_WARNINGS = 2
+
   const { user } = useAuth()
+
+  const requestFullscreen = () => {
+    const elem = document.documentElement
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err) => {
+        console.error('Fullscreen request failed:', err)
+        setErrorMessage(
+          'Failed to enter fullscreen mode. Please enable fullscreen manually.'
+        )
+      })
+    }
+  }
+
+  const exitFullscreen = () => {
+    if (document.exitFullscreen) {
+      document
+        .exitFullscreen()
+        .catch((err) => console.error('Exit fullscreen failed:', err))
+    }
+  }
+
+  const handleFullscreenChange = () => {
+    if (
+      !document.fullscreenElement &&
+      !isAssessmentComplete &&
+      initialStartComplete.current
+    ) {
+      if (fullscreenWarnings < MAX_FULLSCREEN_WARNINGS) {
+        setShowFullscreenWarning(true)
+        setFullscreenWarnings((prev) => prev + 1)
+        setProctoringRemarks((prev) => [
+          ...prev,
+          `Exited fullscreen mode at ${new Date().toISOString()}`,
+        ])
+      } else {
+        console.log('Ending Assessment due to repeated fullscreen exits')
+        setProctoringRemarks((prev) => [
+          ...prev,
+          `Assessment terminated due to repeated fullscreen exits at ${new Date().toISOString()}`,
+        ])
+        endAssessment(true, 'Terminated due to repeated fullscreen exits')
+      }
+    }
+  }
+
+  const handleVisibilityChange = () => {
+    if (
+      document.hidden &&
+      !isAssessmentComplete &&
+      initialStartComplete.current
+    ) {
+      setTabSwitches((prev) => prev + 1)
+      setProctoringRemarks((prev) => [
+        ...prev,
+        `Tab switch or window minimization detected at ${new Date().toISOString()}`,
+      ])
+    }
+  }
+
+  const preventCopyPaste = (e) => {
+    e.preventDefault()
+    setProctoringRemarks((prev) => [
+      ...prev,
+      `Attempted copy/paste at ${new Date().toISOString()}`,
+    ])
+  }
 
   const startAssessment = () => {
     setIsLoading(true)
@@ -60,8 +133,12 @@ const AssessmentChatbot = () => {
     setQuestionPending(false)
     setAwaitingNextQuestion(false)
     setIsAssessmentComplete(false)
+    setFullscreenWarnings(0)
+    setTabSwitches(0)
+    setProctoringRemarks([])
     initialStartComplete.current = false
     currentMcqId.current = null
+    requestFullscreen()
     console.log('Starting assessment for attemptId:', attemptId)
     fetch(`http://localhost:5000/api/assessment/start/${attemptId}`, {
       method: 'POST',
@@ -93,6 +170,13 @@ const AssessmentChatbot = () => {
   useEffect(() => {
     if (attemptId) {
       startAssessment()
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      exitFullscreen()
     }
   }, [attemptId])
 
@@ -162,85 +246,89 @@ const AssessmentChatbot = () => {
     setQuestionPending(true)
     setIsLoading(true)
     setUserAnswer('')
-    console.log('Fetching next question for attemptId:', attemptId)
-    fetch(`http://localhost:5000/api/assessment/next-question/${attemptId}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((data) => {
-            throw new Error(data.error || `HTTP error ${response.status}`)
-          })
-        }
-        return response.json()
+    console.log('Simulating question generation for attemptId:', attemptId)
+    // Simulate 2-second delay for question generation
+    setTimeout(() => {
+      console.log('Fetching next question for attemptId:', attemptId)
+      fetch(`http://localhost:5000/api/assessment/next-question/${attemptId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       })
-      .then((data) => {
-        if (data.message === 'Assessment completed') {
-          setIsAssessmentComplete(true)
-          setCandidateReport(data.candidate_report)
-          setMessages((prev) => [
-            ...prev,
-            {
+        .then((response) => {
+          if (!response.ok) {
+            return response.json().then((data) => {
+              throw new Error(data.error || `HTTP error ${response.status}`)
+            })
+          }
+          return response.json()
+        })
+        .then((data) => {
+          if (data.message === 'Assessment completed') {
+            setIsAssessmentComplete(true)
+            setCandidateReport(data.candidate_report)
+            setMessages((prev) => [
+              ...prev,
+              {
+                type: 'bot',
+                content: (
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    Assessment completed! Check your results below.
+                  </div>
+                ),
+              },
+            ])
+          } else if (data.question) {
+            setCurrentQuestion(data.question)
+            setSkill(data.skill)
+            setQuestionNumber(data.question_number)
+            currentMcqId.current = data.question.mcq_id
+            const newMessages = []
+            if (questionNumber === 0 || data.question_number === 1) {
+              newMessages.push({
+                type: 'bot',
+                content: (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Star className="w-4 h-4 text-indigo-600" />
+                    {data.greeting}
+                  </div>
+                ),
+              })
+            }
+            newMessages.push({
               type: 'bot',
-              content: (
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  Assessment completed! Check your results below.
-                </div>
-              ),
-            },
-          ])
-        } else if (data.question) {
-          setCurrentQuestion(data.question)
-          setSkill(data.skill)
-          setQuestionNumber(data.question_number)
-          currentMcqId.current = data.question.mcq_id
-          const newMessages = []
-          if (questionNumber === 0 || data.question_number === 1) {
+              content: `Q${data.question_number}: ${data.question.question}`,
+            })
             newMessages.push({
               type: 'bot',
               content: (
                 <div className="flex items-center gap-2 text-sm">
-                  <Star className="w-4 h-4 text-indigo-600" />
-                  {data.greeting}
+                  <BookOpen className="w-4 h-4 text-indigo-600" />
+                  Skill: {data.skill.replace('_', ' ')}
                 </div>
               ),
             })
+            newMessages.push({
+              type: 'bot',
+              content: 'Options:',
+              options: data.question.options,
+              mcqId: data.question.mcq_id,
+            })
+            setMessages((prev) => [...prev, ...newMessages])
+            setErrorMessage('')
+          } else {
+            setErrorMessage('No more questions available.')
           }
-          newMessages.push({
-            type: 'bot',
-            content: `Q${data.question_number}: ${data.question.question}`,
-          })
-          newMessages.push({
-            type: 'bot',
-            content: (
-              <div className="flex items-center gap-2 text-sm">
-                <BookOpen className="w-4 h-4 text-indigo-600" />
-                Skill: {data.skill.replace('_', ' ')}
-              </div>
-            ),
-          })
-          newMessages.push({
-            type: 'bot',
-            content: 'Options:',
-            options: data.question.options,
-            mcqId: data.question.mcq_id,
-          })
-          setMessages((prev) => [...prev, ...newMessages])
-          setErrorMessage('')
-        } else {
-          setErrorMessage('No more questions available.')
-        }
-      })
-      .catch((error) => {
-        console.error('Error fetching next question:', error)
-        setErrorMessage(`Failed to fetch the next question: ${error.message}`)
-      })
-      .finally(() => {
-        setIsLoading(false)
-        setQuestionPending(false)
-      })
+        })
+        .catch((error) => {
+          console.error('Error fetching next question:', error)
+          setErrorMessage(`Failed to fetch the next question: ${error.message}`)
+        })
+        .finally(() => {
+          setIsLoading(false)
+          setQuestionPending(false)
+        })
+    }, 2000) // 2-second delay
   }
 
   const handleAnswerSubmit = (e) => {
@@ -296,11 +384,6 @@ const AssessmentChatbot = () => {
             type: 'bot',
             content: (
               <div className="flex items-center gap-2 text-sm">
-                {data.feedback.includes('✅') ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-red-600" />
-                )}
                 {data.feedback}
               </div>
             ),
@@ -318,7 +401,7 @@ const AssessmentChatbot = () => {
       .finally(() => setIsLoading(false))
   }
 
-  const endAssessment = () => {
+  const endAssessment = (forced = false, remark = '') => {
     if (isLoading || questionPending) {
       console.log('Blocked endAssessment:', { isLoading, questionPending })
       return
@@ -327,6 +410,15 @@ const AssessmentChatbot = () => {
     fetch(`http://localhost:5000/api/assessment/end/${attemptId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        proctoring_data: {
+          tab_switches: tabSwitches,
+          fullscreen_warnings: fullscreenWarnings,
+          remarks: proctoringRemarks,
+          forced_termination: forced,
+          termination_reason: remark,
+        },
+      }),
     })
       .then((response) => {
         if (!response.ok) {
@@ -356,7 +448,10 @@ const AssessmentChatbot = () => {
         console.error('Error ending assessment:', error)
         setErrorMessage(`Failed to end assessment: ${error.message}`)
       })
-      .finally(() => setIsLoading(false))
+      .finally(() => {
+        setIsLoading(false)
+        exitFullscreen()
+      })
   }
 
   const formatTime = (seconds) => {
@@ -635,15 +730,47 @@ const AssessmentChatbot = () => {
             </div>
           </div>
         )}
+        {showFullscreenWarning && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                Fullscreen Mode Required
+              </h2>
+              <p className="mt-2 text-sm text-gray-700">
+                You have exited fullscreen mode. Please return to fullscreen to
+                continue the assessment. Warning {fullscreenWarnings} of{' '}
+                {MAX_FULLSCREEN_WARNINGS}.
+              </p>
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowFullscreenWarning(false)
+                    handleFullscreenChange()
+                    requestFullscreen()
+                  }}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
+                  spellCheck={false}
+                >
+                  {' '}
+                  Return to Fullscreen
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {isLoading && (
           <div className="bg-white p-3 rounded-md shadow-sm border border-gray-200 mb-6 text-center text-sm text-gray-700 flex items-center justify-center gap-2">
             <RefreshCw className="w-4 h-4 animate-spin" />
-            Loading...
+            Generating with AI...
           </div>
         )}
         <div
           ref={chatContainerRef}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-[32rem] overflow-y-auto mb-6 relative"
+          onCopy={preventCopyPaste}
+          onPaste={preventCopyPaste}
+          onCut={preventCopyPaste}
+          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-[32rem] w-[48rem] overflow-y-auto mb-6 relative"
         >
           {messages.map((msg, index) => (
             <div

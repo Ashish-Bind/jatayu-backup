@@ -291,12 +291,23 @@ const CandidateDashboard = () => {
                         <Clock className="w-4 h-4 text-indigo-600" />
                         <span>Duration: {assessment.duration} minutes</span>
                       </div>
-                      {assessment.schedule && (
+                      {assessment.schedule_start && (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-indigo-600" />
                           <span>
-                            Scheduled:{' '}
-                            {new Date(assessment.schedule).toLocaleString()}
+                            Start Date:{' '}
+                            {new Date(
+                              assessment.schedule_start
+                            ).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      {assessment.schedule_end && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-indigo-600" />
+                          <span>
+                            End Dat:{' '}
+                            {new Date(assessment.schedule_end).toLocaleString()}
                           </span>
                         </div>
                       )}

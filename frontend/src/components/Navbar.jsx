@@ -4,7 +4,11 @@ import { Zap, Briefcase, User, User2Icon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
-const Navbar = ({ userType }) => {
+const Navbar = ({
+  scrollToTestimonials,
+  scrollToFeatures,
+  scrollToHowItWorks,
+}) => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const url = location.pathname
@@ -22,8 +26,8 @@ const Navbar = ({ userType }) => {
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <Zap className="h-6 w-6 text-indigo-600" />
-              <h1 className="text-xl font-bold text-indigo-600 ml-2">
+              <Zap className="h-8 w-8 text-indigo-600" />
+              <h1 className="text-2xl font-extrabold text-indigo-600 ml-2">
                 Quizzer
               </h1>
             </Link>
@@ -31,20 +35,20 @@ const Navbar = ({ userType }) => {
               {url === '/' && (
                 <div className="flex space-x-8">
                   <Link
-                    to="/#features"
-                    className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium"
+                    onClick={scrollToFeatures}
+                    className="text-gray-700 hover:text-indigo-600 px-3 py-2  font-medium"
                   >
                     Features
                   </Link>
                   <Link
-                    to="/#how-it-works"
-                    className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium"
+                    onClick={scrollToHowItWorks}
+                    className="text-gray-700 hover:text-indigo-600 px-3 py-2  font-medium"
                   >
                     How It Works
                   </Link>
                   <Link
-                    to="/#testimonials"
-                    className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium"
+                    onClick={scrollToTestimonials}
+                    className="text-gray-700 hover:text-indigo-600 px-3 py-2  font-medium"
                   >
                     Testimonials
                   </Link>
@@ -58,12 +62,12 @@ const Navbar = ({ userType }) => {
                 <>
                   <Link
                     to="/candidate/dashboard"
-                    className="text-gray-700 hover:text-indigo-600 px-3 py-2 text-sm font-medium flex items-center"
+                    className="text-gray-700 hover:text-indigo-600 px-3 py-2  font-medium flex items-center"
                   >
                     Dashboard
                   </Link>
                   <button
-                    className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600"
+                    className="px-3 py-2  font-medium text-gray-700 hover:text-indigo-600"
                     onClick={handleLogout}
                   >
                     Logout
