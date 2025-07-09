@@ -12,12 +12,13 @@ class JobDescription(db.Model):
     experience_min = db.Column(db.Integer, nullable=False)
     experience_max = db.Column(db.Integer, nullable=False)
     degree_required = db.Column(db.String(255))
-    description = db.Column(db.Text)
+    job_description = db.Column(db.Text)
     duration = db.Column(db.Integer, nullable=False)
     num_questions = db.Column(db.Integer, nullable=False)
     schedule_start = db.Column(db.DateTime, nullable=False)
     schedule_end = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    custom_prompt = db.Column(db.Text)
 
     # Relationships
     recruiter = db.relationship('User', backref='job_descriptions')

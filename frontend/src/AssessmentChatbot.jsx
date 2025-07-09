@@ -1,33 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Bar } from 'react-chartjs-2'
+import Modal from 'react-modal'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import Navbar from './components/Navbar'
+import Button from './components/Button'
+import { MAX_FULLSCREEN_WARNINGS, MAX_TAB_SWITCHES } from './utils/constants'
+import AssessmentMessages from './components/AssessmentMessages'
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js'
+  formatTime,
+  handleAnswerSubmit,
+  fetchNextQuestion,
+  endAssessment,
+  captureSnapshot,
+  requestFullscreen,
+  parseContent,
+  renderContent,
+} from './utils/utils'
 import {
-  CheckCircle,
-  XCircle,
+  BookOpen,
   Clock,
+  RefreshCw,
+  XCircle,
+  Home,
+  Camera,
+  CheckCircle,
   Send,
   StopCircle,
-  RefreshCw,
-  Home,
-  BarChart2,
   Star,
-  BookOpen,
-  TrendingUp,
-  AlertTriangle,
 } from 'lucide-react'
-import { useAuth } from './context/AuthContext'
-import Navbar from './components/Navbar'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
+// Bind Modal to the root element for accessibility
+Modal.setAppElement('#root')
 
 const AssessmentChatbot = () => {
   const { attemptId } = useParams()
@@ -39,91 +43,47 @@ const AssessmentChatbot = () => {
   const [skill, setSkill] = useState('')
   const [userAnswer, setUserAnswer] = useState('')
   const [isAssessmentComplete, setIsAssessmentComplete] = useState(false)
-  const [candidateReport, setCandidateReport] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [questionPending, setQuestionPending] = useState(false)
   const [awaitingNextQuestion, setAwaitingNextQuestion] = useState(false)
-  const initialStartComplete = useRef(false)
-  const chatContainerRef = useRef(null)
-  const currentMcqId = useRef(null)
-
   const [fullscreenWarnings, setFullscreenWarnings] = useState(0)
   const [showFullscreenWarning, setShowFullscreenWarning] = useState(false)
+  const [fullscreenPermissionError, setFullscreenPermissionError] =
+    useState(false)
   const [tabSwitches, setTabSwitches] = useState(0)
+  const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false)
   const [proctoringRemarks, setProctoringRemarks] = useState([])
-  const MAX_FULLSCREEN_WARNINGS = 2
+  const [showSnapshotNotification, setShowSnapshotNotification] =
+    useState(false)
+  const [webcamError, setWebcamError] = useState('')
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
+  const [questionStartTime, setQuestionStartTime] = useState(null)
+  const [usedMcqIds, setUsedMcqIds] = useState([])
+  const initialStartComplete = useRef(false)
+  const currentMcqId = useRef(null)
+  const chatContainerRef = useRef(null)
+  const assessmentContainerRef = useRef(null)
+  const modalButtonRef = useRef(null)
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+  const initialTimeLeft = useRef(null)
+  const snapshotScheduled = useRef(false)
+  const snapshotTimersRef = useRef([])
 
-  const { user } = useAuth()
+  const tabSwitchesRef = useRef(tabSwitches)
+  const fullscreenWarningsRef = useRef(fullscreenWarnings)
 
-  const requestFullscreen = () => {
-    const elem = document.documentElement
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen().catch((err) => {
-        console.error('Fullscreen request failed:', err)
-        setErrorMessage(
-          'Failed to enter fullscreen mode. Please enable fullscreen manually.'
-        )
-      })
-    }
-  }
+  useEffect(() => {
+    tabSwitchesRef.current = tabSwitches
+  }, [tabSwitches])
+  useEffect(() => {
+    fullscreenWarningsRef.current = fullscreenWarnings
+  }, [fullscreenWarnings])
 
-  const exitFullscreen = () => {
-    if (document.exitFullscreen) {
-      document
-        .exitFullscreen()
-        .catch((err) => console.error('Exit fullscreen failed:', err))
-    }
-  }
-
-  const handleFullscreenChange = () => {
-    if (
-      !document.fullscreenElement &&
-      !isAssessmentComplete &&
-      initialStartComplete.current
-    ) {
-      if (fullscreenWarnings < MAX_FULLSCREEN_WARNINGS) {
-        setShowFullscreenWarning(true)
-        setFullscreenWarnings((prev) => prev + 1)
-        setProctoringRemarks((prev) => [
-          ...prev,
-          `Exited fullscreen mode at ${new Date().toISOString()}`,
-        ])
-      } else {
-        console.log('Ending Assessment due to repeated fullscreen exits')
-        setProctoringRemarks((prev) => [
-          ...prev,
-          `Assessment terminated due to repeated fullscreen exits at ${new Date().toISOString()}`,
-        ])
-        endAssessment(true, 'Terminated due to repeated fullscreen exits')
-      }
-    }
-  }
-
-  const handleVisibilityChange = () => {
-    if (
-      document.hidden &&
-      !isAssessmentComplete &&
-      initialStartComplete.current
-    ) {
-      setTabSwitches((prev) => prev + 1)
-      setProctoringRemarks((prev) => [
-        ...prev,
-        `Tab switch or window minimization detected at ${new Date().toISOString()}`,
-      ])
-    }
-  }
-
-  const preventCopyPaste = (e) => {
-    e.preventDefault()
-    setProctoringRemarks((prev) => [
-      ...prev,
-      `Attempted copy/paste at ${new Date().toISOString()}`,
-    ])
-  }
-
-  const startAssessment = () => {
+  // Start assessment and initialize webcam
+  const startAssessment = async () => {
     setIsLoading(true)
     setErrorMessage('')
     setMessages([])
@@ -133,50 +93,293 @@ const AssessmentChatbot = () => {
     setQuestionPending(false)
     setAwaitingNextQuestion(false)
     setIsAssessmentComplete(false)
+    setIsGeneratingQuestion(false)
+    setQuestionStartTime(null)
+    setUsedMcqIds([])
     setFullscreenWarnings(0)
     setTabSwitches(0)
+    setShowFullscreenWarning(false)
+    setFullscreenPermissionError(false)
+    setShowTabSwitchWarning(false)
     setProctoringRemarks([])
+    setShowSnapshotNotification(false)
+    setWebcamError('')
     initialStartComplete.current = false
-    currentMcqId.current = null
-    requestFullscreen()
-    console.log('Starting assessment for attemptId:', attemptId)
-    fetch(`http://localhost:5000/api/assessment/start/${attemptId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((data) => {
-            throw new Error(data.error || `HTTP error ${response.status}`)
-          })
+    initialTimeLeft.current = null
+    snapshotScheduled.current = false
+    snapshotTimersRef.current.forEach(clearTimeout)
+    snapshotTimersRef.current = []
+
+    try {
+      console.log('Requesting webcam access for attemptId:', attemptId)
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      console.log('Webcam stream acquired:', !!stream)
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+
+      console.log('Starting assessment with attemptId:', attemptId)
+      const response = await fetch(
+        `http://localhost:5000/api/assessment/start/${attemptId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
         }
-        return response.json()
+      )
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || `HTTP error ${response.status}`)
+      }
+      const data = await response.json()
+      console.log('Start assessment response:', data)
+      if (!data.test_duration) {
+        throw new Error('test_duration not provided in response')
+      }
+      setTotalQuestions(data.total_questions || 0)
+      setTimeLeft(data.test_duration)
+      initialTimeLeft.current = data.test_duration
+      initialStartComplete.current = true
+
+      await requestFullscreen().catch((err) => {
+        console.error('Fullscreen request failed:', err)
+        setFullscreenPermissionError(true)
+        setShowFullscreenWarning(true)
       })
-      .then((data) => {
-        setTotalQuestions(data.total_questions)
-        setTimeLeft(data.test_duration)
-        initialStartComplete.current = true
-      })
-      .catch((error) => {
-        console.error('Error starting assessment session:', error)
+    } catch (error) {
+      console.error('Start assessment error:', error)
+      if (
+        error.name === 'NotAllowedError' ||
+        error.name === 'PermissionDeniedError'
+      ) {
+        setWebcamError(
+          'Webcam access denied. Please allow webcam access to continue.'
+        )
+        setProctoringRemarks((prev) => [
+          ...prev,
+          `Webcam access denied at ${new Date().toISOString()}`,
+        ])
+      } else {
         setErrorMessage(
           `Failed to start the assessment: ${error.message}. Please retry or return to dashboard.`
         )
-      })
-      .finally(() => setIsLoading(false))
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
+  // Schedule random snapshots
   useEffect(() => {
-    if (attemptId) {
-      startAssessment()
+    console.log('Snapshot scheduling useEffect triggered', {
+      attemptId,
+      isAssessmentComplete,
+      initialStartComplete: initialStartComplete.current,
+      initialTimeLeft: initialTimeLeft.current,
+      stream: !!streamRef.current,
+      snapshotScheduled: snapshotScheduled.current,
+    })
+
+    if (
+      !initialStartComplete.current ||
+      initialTimeLeft.current === null ||
+      !streamRef.current ||
+      isAssessmentComplete ||
+      snapshotScheduled.current
+    ) {
+      console.log('Snapshot scheduling skipped')
+      return
     }
+
+    console.log('Scheduling snapshots')
+    snapshotScheduled.current = true
+    const numSnapshots = Math.floor(Math.random() * 3) + 3
+    const intervals = []
+    for (let i = 0; i < numSnapshots; i++) {
+      const time = Math.trunc(
+        (Math.random() * initialTimeLeft.current * 1000) / 100
+      )
+      intervals.push(time)
+    }
+    intervals.sort((a, b) => a - b)
+
+    console.log('Snapshot intervals:', intervals)
+
+    snapshotTimersRef.current = intervals.map((interval, index) =>
+      setTimeout(async () => {
+        if (!isAssessmentComplete && streamRef.current) {
+          console.log(`Capturing snapshot ${index + 1} at ${interval}ms`)
+          try {
+            await captureSnapshot(
+              attemptId,
+              videoRef.current,
+              setProctoringRemarks,
+              setShowSnapshotNotification
+            )
+            console.log(`Snapshot ${index + 1} captured successfully`)
+          } catch (error) {
+            console.error(`Snapshot ${index + 1} failed:`, error)
+            setProctoringRemarks((prev) => [
+              ...prev,
+              `Snapshot failed at ${new Date().toISOString()}: ${
+                error.message
+              }`,
+            ])
+          }
+        }
+      }, interval)
+    )
+
+    return () => {
+      console.log('Cleaning up snapshot timers')
+      snapshotTimersRef.current.forEach(clearTimeout)
+      snapshotTimersRef.current = []
+      snapshotScheduled.current = false
+    }
+  }, [attemptId, isAssessmentComplete])
+
+  // Clean up webcam stream
+  useEffect(() => {
+    return () => {
+      console.log('Cleaning up webcam stream')
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+      }
+    }
+  }, [])
+
+  // Handle fullscreen changes
+  const handleFullscreenChange = () => {
+    const isFullscreen =
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    if (
+      !isFullscreen &&
+      !isAssessmentComplete &&
+      initialStartComplete.current
+    ) {
+      setFullscreenWarnings((prev) => {
+        const newCount = prev + 1
+        setProctoringRemarks((prevRemarks) => [
+          ...prevRemarks,
+          `Exited fullscreen mode at ${new Date().toISOString()}`,
+        ])
+        if (newCount > MAX_FULLSCREEN_WARNINGS) {
+          setProctoringRemarks((prevRemarks) => [
+            ...prevRemarks,
+            `Assessment terminated due to repeated fullscreen exits at ${new Date().toISOString()}`,
+          ])
+          endAssessment(
+            attemptId,
+            true,
+            'Terminated due to repeated fullscreen exits',
+            setIsAssessmentComplete,
+            setIsLoading,
+            setErrorMessage,
+            {
+              tabSwitches: tabSwitchesRef.current,
+              fullscreenWarnings: newCount,
+              proctoringRemarks,
+            },
+            () => navigate(`/candidate/assessment/${attemptId}/results`)
+          )
+        } else {
+          setShowFullscreenWarning(true)
+        }
+        return newCount
+      })
+    }
+  }
+
+  // Handle tab/window switches
+  const handleVisibilityChange = () => {
+    if (
+      document.hidden &&
+      !isAssessmentComplete &&
+      initialStartComplete.current
+    ) {
+      setTabSwitches((prev) => {
+        const newCount = prev + 1
+        setProctoringRemarks((prevRemarks) => [
+          ...prevRemarks,
+          `Tab switch or window minimization detected at ${new Date().toISOString()}`,
+        ])
+        if (newCount >= MAX_TAB_SWITCHES) {
+          setProctoringRemarks((prevRemarks) => [
+            ...prevRemarks,
+            `Assessment terminated due to repeated tab switches at ${new Date().toISOString()}`,
+          ])
+          endAssessment(
+            attemptId,
+            true,
+            'Terminated due to repeated tab switches',
+            setIsAssessmentComplete,
+            setIsLoading,
+            setErrorMessage,
+            {
+              tabSwitches: newCount,
+              fullscreenWarnings: fullscreenWarningsRef.current,
+              proctoringRemarks,
+            },
+            () => navigate(`/candidate/assessment/${attemptId}/results`)
+          )
+        } else {
+          setShowTabSwitchWarning(true)
+        }
+        return newCount
+      })
+    }
+  }
+
+  // Focus modal button when opened
+  useEffect(() => {
+    if (showFullscreenWarning && modalButtonRef.current) {
+      modalButtonRef.current.focus()
+    }
+  }, [showFullscreenWarning])
+
+  // Handle navigation on assessment completion
+  useEffect(() => {
+    if (isAssessmentComplete) {
+      navigate(`/candidate/assessment/${attemptId}/results`)
+    }
+  }, [isAssessmentComplete, attemptId, navigate])
+
+  // Event listeners
+  useEffect(() => {
+    if (attemptId) startAssessment()
     document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    const preventCopyPaste = (e) => {
+      e.preventDefault()
+      setProctoringRemarks((prev) => [
+        ...prev,
+        `Attempted copy/paste at ${new Date().toISOString()}`,
+      ])
+    }
+    document.addEventListener('copy', preventCopyPaste)
+    document.addEventListener('paste', preventCopyPaste)
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener(
+        'webkitfullscreenchange',
+        handleFullscreenChange
+      )
+      document.removeEventListener(
+        'mozfullscreenchange',
+        handleFullscreenChange
+      )
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      exitFullscreen()
+      document.removeEventListener('copy', preventCopyPaste)
+      document.removeEventListener('paste', preventCopyPaste)
     }
   }, [attemptId])
 
@@ -188,7 +391,22 @@ const AssessmentChatbot = () => {
       !isAssessmentComplete &&
       !awaitingNextQuestion
     ) {
-      fetchNextQuestion()
+      fetchNextQuestion(
+        attemptId,
+        setCurrentQuestion,
+        setSkill,
+        setQuestionNumber,
+        setMessages,
+        setIsAssessmentComplete,
+        setIsLoading,
+        setQuestionPending,
+        setErrorMessage,
+        setQuestionStartTime,
+        setUsedMcqIds,
+        usedMcqIds,
+        questionNumber,
+        setIsGeneratingQuestion
+      )
     }
   }, [
     initialStartComplete.current,
@@ -196,6 +414,7 @@ const AssessmentChatbot = () => {
     currentQuestion,
     isAssessmentComplete,
     awaitingNextQuestion,
+    usedMcqIds,
   ])
 
   useEffect(() => {
@@ -206,7 +425,22 @@ const AssessmentChatbot = () => {
       !isAssessmentComplete
     ) {
       setTimeout(() => {
-        fetchNextQuestion()
+        fetchNextQuestion(
+          attemptId,
+          setCurrentQuestion,
+          setSkill,
+          setQuestionNumber,
+          setMessages,
+          setIsAssessmentComplete,
+          setIsLoading,
+          setQuestionPending,
+          setErrorMessage,
+          setQuestionStartTime,
+          setUsedMcqIds,
+          usedMcqIds,
+          questionNumber,
+          setIsGeneratingQuestion
+        )
         setAwaitingNextQuestion(false)
       }, 1500)
     }
@@ -218,7 +452,20 @@ const AssessmentChatbot = () => {
         setTimeLeft((prev) => {
           if (prev <= 0) {
             clearInterval(timer)
-            endAssessment()
+            endAssessment(
+              attemptId,
+              false,
+              '',
+              setIsAssessmentComplete,
+              setIsLoading,
+              setErrorMessage,
+              {
+                tabSwitches: tabSwitchesRef.current,
+                fullscreenWarnings: fullscreenWarningsRef.current,
+                proctoringRemarks,
+              },
+              () => navigate(`/candidate/assessment/${attemptId}/results`)
+            )
             return 0
           }
           return prev - 1
@@ -226,7 +473,7 @@ const AssessmentChatbot = () => {
       }, 1000)
       return () => clearInterval(timer)
     }
-  }, [timeLeft])
+  }, [timeLeft, attemptId, navigate])
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -234,618 +481,202 @@ const AssessmentChatbot = () => {
     }
   }, [messages])
 
-  const fetchNextQuestion = () => {
-    if (isLoading || isAssessmentComplete || questionPending) {
-      console.log('Blocked fetchNextQuestion:', {
-        isLoading,
-        isAssessmentComplete,
-        questionPending,
-      })
-      return
-    }
-    setQuestionPending(true)
-    setIsLoading(true)
-    setUserAnswer('')
-    console.log('Simulating question generation for attemptId:', attemptId)
-    // Simulate 2-second delay for question generation
-    setTimeout(() => {
-      console.log('Fetching next question for attemptId:', attemptId)
-      fetch(`http://localhost:5000/api/assessment/next-question/${attemptId}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      })
-        .then((response) => {
-          if (!response.ok) {
-            return response.json().then((data) => {
-              throw new Error(data.error || `HTTP error ${response.status}`)
-            })
-          }
-          return response.json()
-        })
-        .then((data) => {
-          if (data.message === 'Assessment completed') {
-            setIsAssessmentComplete(true)
-            setCandidateReport(data.candidate_report)
-            setMessages((prev) => [
-              ...prev,
-              {
-                type: 'bot',
-                content: (
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    Assessment completed! Check your results below.
-                  </div>
-                ),
-              },
-            ])
-          } else if (data.question) {
-            setCurrentQuestion(data.question)
-            setSkill(data.skill)
-            setQuestionNumber(data.question_number)
-            currentMcqId.current = data.question.mcq_id
-            const newMessages = []
-            if (questionNumber === 0 || data.question_number === 1) {
-              newMessages.push({
-                type: 'bot',
-                content: (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Star className="w-4 h-4 text-indigo-600" />
-                    {data.greeting}
-                  </div>
-                ),
-              })
-            }
-            newMessages.push({
-              type: 'bot',
-              content: `Q${data.question_number}: ${data.question.question}`,
-            })
-            newMessages.push({
-              type: 'bot',
-              content: (
-                <div className="flex items-center gap-2 text-sm">
-                  <BookOpen className="w-4 h-4 text-indigo-600" />
-                  Skill: {data.skill.replace('_', ' ')}
-                </div>
-              ),
-            })
-            newMessages.push({
-              type: 'bot',
-              content: 'Options:',
-              options: data.question.options,
-              mcqId: data.question.mcq_id,
-            })
-            setMessages((prev) => [...prev, ...newMessages])
-            setErrorMessage('')
-          } else {
-            setErrorMessage('No more questions available.')
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching next question:', error)
-          setErrorMessage(`Failed to fetch the next question: ${error.message}`)
-        })
-        .finally(() => {
-          setIsLoading(false)
-          setQuestionPending(false)
-        })
-    }, 2000) // 2-second delay
-  }
-
-  const handleAnswerSubmit = (e) => {
-    e.preventDefault()
-    if (!userAnswer) {
-      setErrorMessage('Please select an answer.')
-      return
-    }
-    if (isLoading || questionPending) {
-      console.log('Blocked handleAnswerSubmit:', { isLoading, questionPending })
-      return
-    }
-    setIsLoading(true)
-    const startTime = Date.now()
-    setMessages((prev) => [
-      ...prev,
-      {
-        type: 'user',
-        content: (
-          <div className="flex items-center justify-end gap-2 text-sm">
-            Selected option {userAnswer}
-            <Send className="w-4 h-4 text-indigo-600" />
-          </div>
-        ),
-      },
-    ])
-    console.log('Submitting answer:', {
-      skill,
-      answer: userAnswer,
-      mcq_id: currentQuestion.mcq_id,
-    })
-    fetch(`http://localhost:5000/api/assessment/submit-answer/${attemptId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        skill: skill,
-        answer: userAnswer,
-        time_taken: (Date.now() - startTime) / 1000,
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((data) => {
-            throw new Error(data.error || `HTTP error ${response.status}`)
-          })
-        }
-        return response.json()
-      })
-      .then((data) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            type: 'bot',
-            content: (
-              <div className="flex items-center gap-2 text-sm">
-                {data.feedback}
-              </div>
-            ),
-          },
-        ])
-        setCurrentQuestion(null)
-        currentMcqId.current = null
-        setUserAnswer('')
-        setAwaitingNextQuestion(true)
-      })
-      .catch((error) => {
-        console.error('Error submitting answer:', error)
-        setErrorMessage(`Failed to submit your answer: ${error.message}`)
-      })
-      .finally(() => setIsLoading(false))
-  }
-
-  const endAssessment = (forced = false, remark = '') => {
-    if (isLoading || questionPending) {
-      console.log('Blocked endAssessment:', { isLoading, questionPending })
-      return
-    }
-    setIsLoading(true)
-    fetch(`http://localhost:5000/api/assessment/end/${attemptId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        proctoring_data: {
-          tab_switches: tabSwitches,
-          fullscreen_warnings: fullscreenWarnings,
-          remarks: proctoringRemarks,
-          forced_termination: forced,
-          termination_reason: remark,
-        },
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((data) => {
-            throw new Error(data.error || `HTTP error ${response.status}`)
-          })
-        }
-        return response.json()
-      })
-      .then((data) => {
-        setIsAssessmentComplete(true)
-        setCandidateReport(data.candidate_report)
-        setMessages((prev) => [
-          ...prev,
-          {
-            type: 'bot',
-            content: (
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Assessment completed! Check your results below.
-              </div>
-            ),
-          },
-        ])
-      })
-      .catch((error) => {
-        console.error('Error ending assessment:', error)
-        setErrorMessage(`Failed to end assessment: ${error.message}`)
-      })
-      .finally(() => {
-        setIsLoading(false)
-        exitFullscreen()
-      })
-  }
-
-  const formatTime = (seconds) => {
-    if (seconds === null) return '0:00'
-    const minutes = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`
-  }
-
-  const handleOptionSelect = (value) => {
-    console.log('Selected option:', value, 'for mcq_id:', currentMcqId.current)
-    setUserAnswer(value)
-  }
-
-  if (isAssessmentComplete && candidateReport) {
-    const chartData = {
-      labels: Object.keys(candidateReport).map((skill) =>
-        skill.replace('_', ' ')
-      ),
-      datasets: [
-        {
-          label: 'Accuracy (%)',
-          data: Object.values(candidateReport).map(
-            (stats) => stats.accuracy_percent
-          ),
-          backgroundColor: 'rgba(79, 70, 229, 0.6)', // indigo-600
-          borderColor: 'rgba(79, 70, 229, 1)',
-          borderWidth: 1,
-          hoverBackgroundColor: 'rgba(79, 70, 229, 0.8)',
-        },
-      ],
-    }
-
-    const chartOptions = {
-      responsive: true,
-      plugins: {
-        legend: { position: 'top', labels: { font: { size: 12 } } },
-        title: {
-          display: true,
-          text: 'Skill-wise Accuracy',
-          font: { size: 16, weight: 'bold' },
-          padding: { top: 10, bottom: 20 },
-        },
-        tooltip: { backgroundColor: '#1f2937', titleFont: { size: 12 } },
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 100,
-          title: {
-            display: true,
-            text: 'Accuracy (%)',
-            font: { size: 12 },
-          },
-          grid: { color: 'rgba(0, 0, 0, 0.05)' },
-        },
-        x: {
-          title: {
-            display: true,
-            text: 'Skills',
-            font: { size: 12 },
-          },
-          grid: { display: false },
-        },
-      },
-      animation: { duration: 1000, easing: 'easeInOutQuad' },
-    }
-
-    const totalAttempted = Object.values(candidateReport).reduce(
-      (sum, stats) => sum + stats.questions_attempted,
-      0
-    )
-    const totalCorrect = Object.values(candidateReport).reduce(
-      (sum, stats) => sum + stats.correct_answers,
-      0
-    )
-    const overallAccuracy =
-      totalAttempted > 0
-        ? ((totalCorrect / totalAttempted) * 100).toFixed(2)
-        : 0
-
-    return (
-      <div className="min-h-screen bg-gray-100 flex flex-col">
-        <Navbar userType={user.role} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-indigo-600" />
-            Assessment Completed
-          </h1>
-          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 mb-8">
-            <p className="text-green-700 text-sm font-medium mb-6 flex items-center gap-2">
-              <Star className="w-4 h-4 text-indigo-600" />
-              Congratulations! You've completed the assessment.
-            </p>
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <BarChart2 className="w-5 h-5 text-indigo-600" />
-                  Performance Summary
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-indigo-50 p-5 rounded-md border border-gray-200 hover:shadow-md transition-shadow">
-                    <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-indigo-600" />
-                      Questions Attempted
-                    </p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {totalAttempted} / {totalQuestions}
-                    </p>
-                  </div>
-                  <div className="bg-indigo-50 p-5 rounded-md border border-gray-200 hover:shadow-md transition-shadow">
-                    <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-indigo-600" />
-                      Correct Answers
-                    </p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {totalCorrect}
-                    </p>
-                  </div>
-                  <div className="bg-indigo-50 p-5 rounded-md border border-gray-200 hover:shadow-md transition-shadow">
-                    <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-indigo-600" />
-                      Overall Accuracy
-                    </p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {overallAccuracy}%
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-indigo-600" />
-                  Skill-wise Breakdown
-                </h3>
-                <div className="space-y-4">
-                  {Object.entries(candidateReport).map(([skill, stats]) => (
-                    <div
-                      key={skill}
-                      className="bg-white p-5 rounded-md border border-gray-200 hover:shadow-md transition-shadow"
-                    >
-                      <h4 className="text-base font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                        <Star className="w-4 h-4 text-indigo-600" />
-                        {skill.replace('_', ' ')}
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
-                        <div>
-                          <p className="flex items-center gap-2">
-                            <BookOpen className="w-4 h-4 text-indigo-600" />
-                            Questions Attempted: {stats.questions_attempted}
-                          </p>
-                          <p className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-indigo-600" />
-                            Correct Answers: {stats.correct_answers}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-indigo-600" />
-                            Accuracy: {stats.accuracy_percent}%
-                          </p>
-                          <p className="flex items-center gap-2">
-                            <Star className="w-4 h-4 text-indigo-600" />
-                            Performance Band:{' '}
-                            <span className="capitalize">
-                              {stats.final_band}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div
-                            className="bg-indigo-600 h-2.5 rounded-full transition-all duration-1000 ease-in-out"
-                            style={{ width: `${stats.accuracy_percent}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <BarChart2 className="w-5 h-5 text-indigo-600" />
-                  Performance Visualization
-                </h3>
-                <div className="bg-white p-5 rounded-md border border-gray-200">
-                  <Bar data={chartData} options={chartOptions} />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-indigo-600" />
-                  Insights & Recommendations
-                </h3>
-                <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
-                  {Object.entries(candidateReport).map(([skill, stats]) => (
-                    <li key={skill} className="flex items-start gap-2">
-                      <Star className="w-4 h-4 text-indigo-600 mt-1" />
-                      <span>
-                        <span className="font-semibold">
-                          {skill.replace('_', ' ')}:
-                        </span>{' '}
-                        {stats.accuracy_percent >= 80
-                          ? `Excellent performance! Consider advanced roles requiring ${skill.replace(
-                              '_',
-                              ' '
-                            )}.`
-                          : stats.accuracy_percent >= 50
-                          ? `Good effort. Review ${skill.replace(
-                              '_',
-                              ' '
-                            )} concepts to boost your score.`
-                          : `Focus on ${skill.replace(
-                              '_',
-                              ' '
-                            )} fundamentals to improve your performance.`}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button
-              onClick={() => navigate('/candidate/dashboard')}
-              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 gap-2"
-            >
-              <Home className="w-4 h-4" />
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div
+      className="min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800 flex flex-col"
+      ref={assessmentContainerRef}
+    >
+      <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-indigo-600" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-300" />
             Assessment Chatbot
           </h1>
-          <div className="bg-indigo-50 px-3 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-indigo-600" />
+          <div className="bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
             Time Left: {formatTime(timeLeft)}
           </div>
         </div>
         {errorMessage && (
           <div
-            className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 mb-6 rounded-md text-sm flex items-center gap-2"
+            className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-3 mb-6 rounded-md text-sm flex items-center gap-2"
             role="alert"
           >
             <XCircle className="w-4 h-4" />
             {errorMessage}
             <div className="ml-auto flex gap-2">
-              <button
+              <Button
                 onClick={startAssessment}
                 disabled={isLoading}
-                className="flex items-center px-3 py-1 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 gap-1"
+                variant="primary"
+                size="sm"
+                className="gap-1"
               >
                 <RefreshCw className="w-4 h-4" />
                 Retry
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => navigate('/candidate/dashboard')}
-                className="flex items-center px-3 py-1 bg-gray-500 text-white rounded-md text-xs font-medium hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 gap-1"
+                variant="secondary"
+                size="sm"
+                className="gap-1"
               >
                 <Home className="w-4 h-4" />
                 Dashboard
-              </button>
+              </Button>
             </div>
           </div>
         )}
-        {showFullscreenWarning && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                Fullscreen Mode Required
-              </h2>
-              <p className="mt-2 text-sm text-gray-700">
-                You have exited fullscreen mode. Please return to fullscreen to
-                continue the assessment. Warning {fullscreenWarnings} of{' '}
-                {MAX_FULLSCREEN_WARNINGS}.
-              </p>
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => {
-                    setShowFullscreenWarning(false)
-                    handleFullscreenChange()
-                    requestFullscreen()
-                  }}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
-                  spellCheck={false}
-                >
-                  {' '}
-                  Return to Fullscreen
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {isLoading && (
-          <div className="bg-white p-3 rounded-md shadow-sm border border-gray-200 mb-6 text-center text-sm text-gray-700 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            Generating with AI...
-          </div>
-        )}
-        <div
-          ref={chatContainerRef}
-          onCopy={preventCopyPaste}
-          onPaste={preventCopyPaste}
-          onCut={preventCopyPaste}
-          className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-[32rem] w-[48rem] overflow-y-auto mb-6 relative"
-        >
-          {messages.map((msg, index) => (
-            <div
-              key={`message-${index}`}
-              className={`mb-4 flex ${
-                msg.type === 'bot' ? 'justify-start' : 'justify-end'
-              } animate-slide-in`}
-            >
-              <div
-                className={`max-w-[80%] p-3 rounded-md text-sm ${
-                  msg.type === 'bot'
-                    ? 'bg-indigo-50 text-gray-700'
-                    : 'bg-indigo-100 text-gray-900'
-                }`}
-              >
-                {msg.content}
-                {msg.options && (
-                  <div className="mt-2 space-y-2">
-                    {msg.options.map((option, optIndex) => (
-                      <label
-                        key={`option-${msg.mcqId}-${optIndex}`}
-                        className="flex items-center cursor-pointer p-2 rounded-md hover:bg-indigo-100 transition-colors"
-                      >
-                        <input
-                          type="radio"
-                          name={`question-${msg.mcqId}`}
-                          value={(optIndex + 1).toString()}
-                          checked={userAnswer === (optIndex + 1).toString()}
-                          onChange={() =>
-                            handleOptionSelect((optIndex + 1).toString())
-                          }
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-600 border-gray-300"
-                          disabled={isLoading}
-                        />
-                        <span className="ml-2 text-gray-700">
-                          {optIndex + 1}. {option}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          {!messages.length && !isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-700">
-              <BookOpen className="w-4 h-4 mr-2 text-indigo-600" />
-              Waiting for the first question...
-            </div>
-          )}
-        </div>
-        {currentQuestion && !isAssessmentComplete && (
-          <form
-            onSubmit={handleAnswerSubmit}
-            className="flex justify-end space-x-3"
+        {webcamError && (
+          <div
+            className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-3 mb-6 rounded-md text-sm flex items-center gap-2"
+            role="alert"
           >
-            <button
-              type="submit"
-              disabled={isLoading || !userAnswer}
-              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 gap-2"
+            <XCircle className="w-4 h-4" />
+            {webcamError}
+            <Button
+              onClick={() => navigate('/candidate/dashboard')}
+              variant="secondary"
+              size="sm"
+              className="ml-auto gap-1"
             >
-              <Send className="w-4 h-4" />
-              Submit Answer
-            </button>
-            <button
-              type="button"
-              onClick={endAssessment}
-              disabled={isLoading}
-              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 gap-2"
-            >
-              <StopCircle className="w-4 h-4" />
-              End Assessment
-            </button>
-          </form>
+              <Home className="w-4 h-4" />
+              Dashboard
+            </Button>
+          </div>
         )}
+        {showTabSwitchWarning && (
+          <div
+            className="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 p-3 mb-6 rounded-md text-sm flex items-center gap-2"
+            role="alert"
+          >
+            <XCircle className="w-4 h-4" />
+            Warning: Tab switching detected ({tabSwitches}/{MAX_TAB_SWITCHES}).
+            Please stay on this tab to avoid assessment termination.
+            <Button
+              onClick={() => setShowTabSwitchWarning(false)}
+              variant="secondary"
+              size="sm"
+              className="ml-auto gap-1"
+            >
+              OK
+            </Button>
+          </div>
+        )}
+        {showSnapshotNotification && (
+          <div
+            className="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 text-blue-700 dark:text-blue-300 p-3 mb-6 rounded-md text-sm flex items-center gap-2"
+            role="alert"
+          >
+            <Camera className="w-4 h-4" />
+            Snapshot taken for proctoring.
+            <Button
+              onClick={() => setShowSnapshotNotification(false)}
+              variant="secondary"
+              size="sm"
+              className="ml-auto gap-1"
+            >
+              OK
+            </Button>
+          </div>
+        )}
+        {(isLoading || isGeneratingQuestion) && (
+          <div className="bg-white dark:bg-gray-800 p-3 rounded-md shadow-sm border border-gray-200 dark:border-gray-600 mb-6 text-center text-sm text-gray-700 dark:text-gray-200 flex items-center justify-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            {isGeneratingQuestion
+              ? 'Generating your next question...'
+              : 'Loading...'}
+          </div>
+        )}
+        <AssessmentMessages
+          messages={messages}
+          isLoading={isLoading}
+          currentQuestion={currentQuestion}
+          userAnswer={userAnswer}
+          handleOptionSelect={(value) => {
+            setUserAnswer(value)
+            currentMcqId.current = currentQuestion?.mcq_id
+          }}
+          handleAnswerSubmit={(e) =>
+            handleAnswerSubmit(
+              e,
+              attemptId,
+              skill,
+              userAnswer,
+              currentQuestion,
+              setMessages,
+              setCurrentQuestion,
+              currentMcqId,
+              setUserAnswer,
+              setAwaitingNextQuestion,
+              setIsLoading,
+              setErrorMessage,
+              questionStartTime
+            )
+          }
+          endAssessment={() =>
+            endAssessment(
+              attemptId,
+              false,
+              '',
+              setIsAssessmentComplete,
+              setIsLoading,
+              setErrorMessage,
+              {
+                tabSwitches: tabSwitchesRef.current,
+                fullscreenWarnings: fullscreenWarningsRef.current,
+                proctoringRemarks,
+              },
+              () => navigate(`/candidate/assessment/${attemptId}/results`)
+            )
+          }
+          chatContainerRef={chatContainerRef}
+        />
+        <video ref={videoRef} className="hidden" autoPlay playsInline />
+        <Modal
+          isOpen={showFullscreenWarning}
+          onRequestClose={() => {
+            setShowFullscreenWarning(false)
+            if (!fullscreenPermissionError) {
+              requestFullscreen()
+            }
+          }}
+          className="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 p-4 rounded-md max-w-md w-full mx-auto mt-20"
+          overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+          aria={{
+            labelledby: 'fullscreen-warning-title',
+            describedby: 'fullscreen-warning-desc',
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <XCircle className="w-5 h-5" />
+            <h2 id="fullscreen-warning-title" className="text-lg font-semibold">
+              Fullscreen Warning
+            </h2>
+          </div>
+          <p id="fullscreen-warning-desc" className="text-sm mb-4">
+            {fullscreenPermissionError
+              ? 'Failed to enter fullscreen mode. Please enable fullscreen to continue the assessment.'
+              : `Warning: You have exited fullscreen mode (${fullscreenWarnings}/${MAX_FULLSCREEN_WARNINGS}). Please stay in fullscreen to continue the assessment.`}
+          </p>
+          <div className="flex justify-end">
+            <Button
+              ref={modalButtonRef}
+              onClick={() => {
+                setShowFullscreenWarning(false)
+                if (!fullscreenPermissionError) {
+                  requestFullscreen()
+                }
+              }}
+              variant="secondary"
+              size="sm"
+              className="gap-1"
+            >
+              {fullscreenPermissionError ? 'OK' : 'Re-enter Fullscreen'}
+            </Button>
+          </div>
+        </Modal>
       </div>
     </div>
   )

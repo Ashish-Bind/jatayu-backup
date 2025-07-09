@@ -28,5 +28,6 @@ export default {
       mono: ['Space Grotesk', 'sans-serif'],
     },
   },
+  darkMode: 'class',
   plugins: [],
 }

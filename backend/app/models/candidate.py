@@ -17,6 +17,7 @@ class Candidate(db.Model):
     resume = db.Column(db.String(200))
     profile_picture = db.Column(db.String(200))
     is_profile_complete = db.Column(db.Boolean, default=False)
+    camera_image = db.Column(db.String(200))
 
     def _repr_(self):
         return f'<Candidate {self.name}>'

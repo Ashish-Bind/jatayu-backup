@@ -15,6 +15,11 @@ import AssessmentChatbot from './AssessmentChatbot'
 import CandidateRanking from './CandidateRanking'
 import PostAssessmentReport from './pages/PostAssessmentReport'
 import CombinedReport from './pages/CombinedReport'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import CandidateConfirm from './pages/CandidateConfirm'
+import CandidateResult from './pages/CandidateResult'
+import AssessmentResults from './pages/AssessmentResults'
 
 export default function App() {
   const { user } = useAuth()
@@ -29,6 +34,9 @@ export default function App() {
       <Route element={<AuthRoute />}>
         <Route path="/candidate/login" element={<CandidateLogin />} />
         <Route path="/candidate/signup" element={<CandidateSignup />} />
+        <Route path="/candidate/forgot-password" element={<ForgotPassword />} />
+        <Route path="/candidate/reset-password" element={<ResetPassword />} />
+        <Route path="/candidate/confirm" element={<CandidateConfirm />} />
       </Route>
 
       <Route element={<AuthRoute redirectPath="/recruiter/dashboard" />}>
@@ -49,6 +57,11 @@ export default function App() {
           path="/candidate/assessment/:attemptId"
           element={<AssessmentChatbot />}
         />
+        <Route
+          path="/candidate/assessment/:attemptId/results"
+          element={<CandidateResult />}
+        />
+        <Route path="/candidate/results" element={<AssessmentResults />} />
       </Route>
 
       <Route

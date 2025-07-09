@@ -43,11 +43,46 @@ export const AuthProvider = ({ children }) => {
         await checkAuth()
         return true
       }
-      return false
+      const data = await response.json()
+      throw new Error(data?.error || 'Login failed')
     } catch (error) {
-      console.error('Login error:', error)
-      return false
+      throw new Error(error.message)
     }
+  }
+
+  const requestPasswordReset = async (email) => {
+    try {
+      const response = await fetch(
+        'http://localhost:5000/api/auth/forgot-password',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email }),
+        }
+      )
+    } catch (err) {
+      throw err.response.data
+    }
+  }
+
+  const resetPassword = async (token, password) => {
+    const response = await fetch(
+      'http://localhost:5000/api/auth/reset-password',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ token, password }),
+      }
+    )
+
+    if (!response.ok) {
+      const data = await response.json()
+      throw new Error(data.error || 'Something went wrong!')
+    }
+
+    return await response.json()
   }
 
   const logout = async () => {
@@ -68,6 +103,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     checkAuth,
+    requestPasswordReset,
+    resetPassword,
   }
 
   return (
