@@ -16,12 +16,33 @@ import {
   X,
   Check,
   Loader2,
+  Code,
 } from 'lucide-react'
 import Navbar from './components/Navbar'
 import { ThemeContext } from './context/ThemeContext'
+import { format } from 'date-fns'
+import LinkButton from './components/LinkButton'
+import Button from './components/Button'
 
 // Bind modal to your appElement (for accessibility)
 Modal.setAppElement('#root')
+
+const formatDate = (date) => {
+  return format(new Date(date), 'MMM d, yyyy')
+}
+
+const getPriorityColor = (priority) => {
+  switch (priority) {
+    case 5:
+      return 'bg-green-300 text-green-800 dark:bg-green-900 dark:text-green-200' // Low priority
+    case 3:
+      return 'bg-blue-300 text-blue-800 dark:bg-blue-900 dark:text-blue-200' // Medium priority
+    case 2:
+      return 'bg-yellow-300 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' // High priority
+    default:
+      return 'bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+  }
+}
 
 const CandidateDashboard = () => {
   const { user } = useAuth()
@@ -298,30 +319,31 @@ const CandidateDashboard = () => {
               Available Assessments
             </h2>
             {assessments.eligible.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {assessments.eligible.map((assessment) => (
                   <div
                     key={assessment.job_id}
-                    className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
+                    className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
                   >
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="bg-indigo-50 dark:bg-indigo-900/50 p-2 rounded-md">
-                        <Briefcase className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
+                        <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                           {assessment.job_title}
                         </h3>
-                        <p className="text-gray-700 dark:text-gray-300 text-sm">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
                           Company: {assessment.company}
                         </p>
                       </div>
                     </div>
-                    <div className="space-y-2 mb-4 text-sm text-gray-700 dark:text-gray-300">
+
+                    <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-3">
                       <div className="flex items-center gap-2">
                         <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>
-                          Experience: {assessment.experience_min}-
+                        <span className="text-sm">
+                          {assessment.experience_min}-
                           {assessment.experience_max} years
                         </span>
                       </div>
@@ -342,51 +364,54 @@ const CandidateDashboard = () => {
                       {assessment.schedule_start && (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                          <span>
-                            Start:{' '}
-                            {new Date(
-                              assessment.schedule_start
-                            ).toLocaleString()}
-                          </span>
+                          <div className="inline-flex items-center rounded-md">
+                            {formatDate(assessment.schedule_start)} -{' '}
+                            {assessment.schedule_end
+                              ? formatDate(assessment.schedule_end)
+                              : 'Ongoing'}
+                          </div>
                         </div>
                       )}
-                      {assessment.schedule_end && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                          <span>
-                            End:{' '}
-                            {new Date(assessment.schedule_end).toLocaleString()}
-                          </span>
+                      {assessment.skills && assessment.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          {assessment.skills.map((skill, index) => (
+                            <span
+                              key={index}
+                              className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
+                                skill.priority
+                              )}`}
+                            >
+                              {skill.name}
+                            </span>
+                          ))}
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      {assessment.is_registered ? (
-                        <button
-                          onClick={() => handleStartAssessment(assessment)}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors"
-                        >
-                          Start Assessment <ArrowRight className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRegisterAssessment(assessment)}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600 text-white rounded-md text-sm font-medium transition-colors"
-                        >
-                          Register <ArrowRight className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+
+                    <Button
+                      onClick={() => {
+                        setIsModalOpen(true)
+                        setSelectedAssessment(assessment)
+                      }}
+                      variant="primary"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors w-full"
+                    >
+                      {assessment.is_registered
+                        ? 'Start Assessment'
+                        : 'Register'}
+                      <ArrowRight className="w-5 h-5" />
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm text-center border border-gray-200 dark:border-gray-700 mb-8">
+              <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm text-center border border-gray-200 dark:border-gray-800 mb-8">
                 <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm">
                   No assessments available at the moment.
                 </p>
                 <Link
-                  to="/candidate/profile"
+                  to="/candidate/complete-profile"
                   className="inline-flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
                 >
                   Update your profile for more opportunities{' '}
@@ -405,11 +430,11 @@ const CandidateDashboard = () => {
                   {assessments.attempted.map((assessment) => (
                     <div
                       key={assessment.attempt_id}
-                      className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+                      className="bg-white dark:bg-gray-900 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
                     >
                       <div className="flex items-start gap-3 mb-3">
                         <div className="bg-indigo-50 dark:bg-indigo-900/50 p-2 rounded-md">
-                          <Briefcase className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -429,7 +454,10 @@ const CandidateDashboard = () => {
                           <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                           <span>
                             Attempted:{' '}
-                            {new Date(assessment.attempt_date).toLocaleString()}
+                            {format(
+                              new Date(assessment.attempt_date),
+                              'MMM d, yyyy'
+                            )}
                           </span>
                         </div>
                       </div>
@@ -450,7 +478,7 @@ const CandidateDashboard = () => {
         <Modal
           isOpen={isModalOpen}
           onRequestClose={() => setIsModalOpen(false)}
-          className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm max-w-md mx-auto mt-20 border border-gray-200 dark:border-gray-700 outline-none"
+          className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm max-w-5xl mx-auto mt-20 border border-gray-200 dark:border-gray-800 outline-none"
           overlayClassName="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex justify-center items-center p-4 z-50"
         >
           <div className="flex justify-between items-start mb-4">
@@ -470,7 +498,7 @@ const CandidateDashboard = () => {
             <div>
               <div className="space-y-3 mb-4 text-sm">
                 <div>
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
                     Job Title
                   </h3>
                   <p className="text-gray-900 dark:text-gray-100">
@@ -478,7 +506,7 @@ const CandidateDashboard = () => {
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
                     Company
                   </h3>
                   <p className="text-gray-900 dark:text-gray-100">
@@ -486,7 +514,7 @@ const CandidateDashboard = () => {
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
                     Duration
                   </h3>
                   <p className="text-gray-900 dark:text-gray-100">
@@ -494,7 +522,7 @@ const CandidateDashboard = () => {
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
                     Questions
                   </h3>
                   <p className="text-gray-900 dark:text-gray-100">
@@ -502,31 +530,31 @@ const CandidateDashboard = () => {
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase">
                     Description
                   </h3>
-                  <p className="text-gray-900 dark:text-gray-100">
-                    {selectedAssessment.description ||
+                  <p className="text-gray-900 text-base dark:text-gray-100 bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-auto h-[15rem] ">
+                    {selectedAssessment.job_description ||
                       'No description provided.'}
                   </p>
                 </div>
               </div>
 
               <div className="bg-indigo-50 dark:bg-indigo-900/50 p-3 rounded-md mb-4">
-                <h3 className="text-xs font-medium text-indigo-800 dark:text-indigo-300 mb-2 uppercase">
+                <h3 className="text-sm font-medium text-indigo-800 dark:text-indigo-300 mb-2 uppercase">
                   Important Notes:
                 </h3>
-                <ul className="text-xs text-indigo-700 dark:text-indigo-300 space-y-1">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <ul className="text-base text-indigo-700 dark:text-indigo-300 space-y-1">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 flex-shrink-0" />
                     <span>Ensure you have a stable internet connection</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 flex-shrink-0" />
                     <span>Find a quiet environment without distractions</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 flex-shrink-0" />
                     <span>You cannot pause once started</span>
                   </li>
                 </ul>

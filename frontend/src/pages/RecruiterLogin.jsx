@@ -42,7 +42,7 @@ const RecruiterLogin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-950 dark:to-gray-900 flex flex-col">
       <Navbar userType="none" />
       <div className="flex-grow flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -52,7 +52,7 @@ const RecruiterLogin = () => {
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <div className="bg-white dark:bg-gray-900 border dark:border-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="text-red-500 dark:text-red-300 text-sm text-center">
@@ -76,7 +76,7 @@ const RecruiterLogin = () => {
                     type="email"
                     autoComplete="email"
                     required
-                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
+                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-700 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200"
                     placeholder="you@company.com"
                     onChange={(e) => setEmail(e.target.value)}
                     value={email}
@@ -101,7 +101,7 @@ const RecruiterLogin = () => {
                     type="password"
                     autoComplete="current-password"
                     required
-                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
+                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-700 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200"
                     placeholder="••••••••"
                     onChange={(e) => setPassword(e.target.value)}
                     value={password}

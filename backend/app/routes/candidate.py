@@ -6,6 +6,7 @@ from deepface import DeepFace
 from app import db
 from app.models.candidate import Candidate
 from app.models.job import JobDescription
+from app.models.required_skill import RequiredSkill
 from app.models.assessment_attempt import AssessmentAttempt
 from app.models.assessment_registration import AssessmentRegistration
 from app.models.skill import Skill
@@ -17,6 +18,7 @@ import google.generativeai as genai
 import logging
 from io import BytesIO
 from pdfminer.high_level import extract_text
+from sqlalchemy.orm import joinedload
 import json
 
 candidate_api_bp = Blueprint('candidate_api', __name__, url_prefix='/api/candidate')
@@ -482,7 +484,9 @@ def get_eligible_assessments(user_id):
     # Current date and time in IST (UTC+5:30)
     current_time = datetime.now(timezone.utc).astimezone(timezone(offset=timedelta(hours=5, minutes=30)))
 
-    assessments = JobDescription.query.all()
+    assessments = JobDescription.query.options(
+        joinedload(JobDescription.required_skills).joinedload(RequiredSkill.skill)
+    ).all()
     eligible_assessments = []
     attempted_assessments = set()
 
@@ -539,8 +543,12 @@ def get_eligible_assessments(user_id):
                 'schedule_end': assessment.schedule_end.isoformat() if assessment.schedule_end else None,
                 'duration': assessment.duration,
                 'num_questions': assessment.num_questions,
-                'description': assessment.description if hasattr(assessment, 'description') else None,
-                'is_registered': is_registered
+                'job_description': assessment.job_description if hasattr(assessment, 'job_description') else None,
+                'is_registered': is_registered,
+                'skills': [
+                    {'name': rs.skill.name, 'priority': rs.priority}
+                    for rs in assessment.required_skills
+                ]
             })
 
     # Fetch attempted assessments (align with /api/assessment/all)

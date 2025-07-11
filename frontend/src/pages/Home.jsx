@@ -20,6 +20,7 @@ import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import LinkButton from '../components/LinkButton'
 import { motion, useInView } from 'motion/react'
+import { Typewriter } from 'react-simple-typewriter'
 
 const Home = () => {
   const featuresRef = useRef(null)
@@ -189,7 +190,14 @@ const Home = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
           >
-            Intelligent MCQ Generation <br />& Assessment Platform
+            <Typewriter
+              words={['Intelligent', 'Generative', 'Adaptive', 'Secure']}
+              loop={5}
+              typeSpeed={100}
+              deleteSpeed={100}
+              delaySpeed={1000}
+            />{' '}
+            MCQ Assessments <br />& Analytics Platform
           </motion.h1>
           <motion.p
             className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto"
@@ -197,8 +205,24 @@ const Home = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.6 }}
           >
-            Revolutionizing recruitment and education with AI-powered adaptive
-            testing, skill gap analysis, and secure proctoring.
+            Revolutionizing recruitment and education with{' '}
+            <span className="dark:text-white text-black">
+              <Typewriter
+                words={[
+                  'AI-powered adaptive testing',
+                  'Skill Gap Analysis',
+                  'Secure Proctoring',
+                  'Detailed Reports',
+                  'Time Efficient Assessments',
+                ]}
+                loop={5}
+                cursor
+                cursorStyle="|"
+                typeSpeed={70}
+                deleteSpeed={50}
+                delaySpeed={1000}
+              />
+            </span>
           </motion.p>
 
           <motion.div
@@ -252,7 +276,7 @@ const Home = () => {
       {/* Features Section */}
       <div
         id="features"
-        className="py-16 bg-indigo-50 dark:bg-gray-900"
+        className="py-16 bg-indigo-50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-900"
         ref={featuresRef}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -278,10 +302,10 @@ const Home = () => {
             {features.map((feature, index) => (
               <motion.div
                 key={index}
-                className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-gray-900 border dark:border-gray-800 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 variants={itemVariants}
                 whileHover={{ scale: 1.05 }}
-                transition={{ type: 'spring', stiffness: 300 }}
+                transition={{ type: 'spring', stiffness: 100 }}
               >
                 <div className="mb-4">{feature.icon}</div>
                 <h3 className="text-lg font-mono font-medium text-gray-900 dark:text-white mb-2">
@@ -299,7 +323,7 @@ const Home = () => {
       {/* How It Works Section */}
       <div
         id="how-it-works"
-        className="py-16 bg-white dark:bg-gray-800"
+        className="py-16 bg-white dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800"
         ref={howItWorksRef}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -328,7 +352,7 @@ const Home = () => {
                 className="text-center"
                 variants={itemVariants}
                 whileHover={{ scale: 1.1 }}
-                transition={{ type: 'spring', stiffness: 300 }}
+                transition={{ type: 'spring', stiffness: 100 }}
               >
                 <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-indigo-600 dark:text-indigo-300 font-bold text-xl">
@@ -350,7 +374,7 @@ const Home = () => {
       {/* Testimonials Section */}
       <div
         id="testimonials"
-        className="py-16 bg-indigo-50 dark:bg-gray-900"
+        className="py-16 bg-indigo-50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950"
         ref={testimonialsRef}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -376,7 +400,7 @@ const Home = () => {
             {testimonials.map((testimonial) => (
               <motion.div
                 key={testimonial.id}
-                className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm"
+                className="bg-white dark:bg-gray-900 border dark:border-gray-800 p-6 rounded-lg shadow-sm"
                 variants={itemVariants}
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 300 }}
@@ -478,7 +502,7 @@ const Home = () => {
 
       {/* Footer */}
       <motion.footer
-        className="bg-gray-900 dark:bg-gray-950 text-white"
+        className="bg-gray-900 dark:bg-gray-900 text-white"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}

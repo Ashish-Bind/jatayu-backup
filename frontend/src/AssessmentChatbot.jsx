@@ -78,9 +78,81 @@ const AssessmentChatbot = () => {
   useEffect(() => {
     tabSwitchesRef.current = tabSwitches
   }, [tabSwitches])
+
   useEffect(() => {
     fullscreenWarningsRef.current = fullscreenWarnings
   }, [fullscreenWarnings])
+
+  // Function to schedule snapshots
+  const scheduleSnapshots = () => {
+    console.log('Scheduling snapshots', {
+      attemptId,
+      isAssessmentComplete,
+      initialStartComplete: initialStartComplete.current,
+      initialTimeLeft: initialTimeLeft.current,
+      stream: !!streamRef.current,
+      snapshotScheduled: snapshotScheduled.current,
+    })
+
+    if (!initialStartComplete.current) {
+      console.log('Snapshot scheduling skipped: initialStartComplete is false')
+      return
+    }
+    if (initialTimeLeft.current === null) {
+      console.log('Snapshot scheduling skipped: initialTimeLeft is null')
+      return
+    }
+    if (!streamRef.current) {
+      console.log('Snapshot scheduling skipped: streamRef is null')
+      return
+    }
+    if (isAssessmentComplete) {
+      console.log('Snapshot scheduling skipped: isAssessmentComplete is true')
+      return
+    }
+    if (snapshotScheduled.current) {
+      console.log('Snapshot scheduling skipped: snapshotScheduled is true')
+      return
+    }
+
+    snapshotScheduled.current = true
+    const numSnapshots = Math.floor(Math.random() * 3) + 3
+    const intervals = []
+    for (let i = 0; i < numSnapshots; i++) {
+      const time = Math.trunc(
+        (Math.random() * initialTimeLeft.current * 1000) / 100
+      )
+      intervals.push(time)
+    }
+    intervals.sort((a, b) => a - b)
+
+    console.log('Snapshot intervals:', intervals)
+
+    snapshotTimersRef.current = intervals.map((interval, index) =>
+      setTimeout(async () => {
+        if (!isAssessmentComplete && streamRef.current) {
+          console.log(`Capturing snapshot ${index + 1} at ${interval}ms`)
+          try {
+            await captureSnapshot(
+              attemptId,
+              videoRef.current,
+              setProctoringRemarks,
+              setShowSnapshotNotification
+            )
+            console.log(`Snapshot ${index + 1} captured successfully`)
+          } catch (error) {
+            console.error(`Snapshot ${index + 1} failed:`, error)
+            setProctoringRemarks((prev) => [
+              ...prev,
+              `Snapshot failed at ${new Date().toISOString()}: ${
+                error.message
+              }`,
+            ])
+          }
+        }
+      }, interval)
+    )
+  }
 
   // Start assessment and initialize webcam
   const startAssessment = async () => {
@@ -142,6 +214,9 @@ const AssessmentChatbot = () => {
       initialTimeLeft.current = data.test_duration
       initialStartComplete.current = true
 
+      // Schedule snapshots after assessment starts
+      scheduleSnapshots()
+
       await requestFullscreen().catch((err) => {
         console.error('Fullscreen request failed:', err)
         setFullscreenPermissionError(true)
@@ -170,79 +245,13 @@ const AssessmentChatbot = () => {
     }
   }
 
-  // Schedule random snapshots
+  // Clean up snapshot timers and webcam stream
   useEffect(() => {
-    console.log('Snapshot scheduling useEffect triggered', {
-      attemptId,
-      isAssessmentComplete,
-      initialStartComplete: initialStartComplete.current,
-      initialTimeLeft: initialTimeLeft.current,
-      stream: !!streamRef.current,
-      snapshotScheduled: snapshotScheduled.current,
-    })
-
-    if (
-      !initialStartComplete.current ||
-      initialTimeLeft.current === null ||
-      !streamRef.current ||
-      isAssessmentComplete ||
-      snapshotScheduled.current
-    ) {
-      console.log('Snapshot scheduling skipped')
-      return
-    }
-
-    console.log('Scheduling snapshots')
-    snapshotScheduled.current = true
-    const numSnapshots = Math.floor(Math.random() * 3) + 3
-    const intervals = []
-    for (let i = 0; i < numSnapshots; i++) {
-      const time = Math.trunc(
-        (Math.random() * initialTimeLeft.current * 1000) / 100
-      )
-      intervals.push(time)
-    }
-    intervals.sort((a, b) => a - b)
-
-    console.log('Snapshot intervals:', intervals)
-
-    snapshotTimersRef.current = intervals.map((interval, index) =>
-      setTimeout(async () => {
-        if (!isAssessmentComplete && streamRef.current) {
-          console.log(`Capturing snapshot ${index + 1} at ${interval}ms`)
-          try {
-            await captureSnapshot(
-              attemptId,
-              videoRef.current,
-              setProctoringRemarks,
-              setShowSnapshotNotification
-            )
-            console.log(`Snapshot ${index + 1} captured successfully`)
-          } catch (error) {
-            console.error(`Snapshot ${index + 1} failed:`, error)
-            setProctoringRemarks((prev) => [
-              ...prev,
-              `Snapshot failed at ${new Date().toISOString()}: ${
-                error.message
-              }`,
-            ])
-          }
-        }
-      }, interval)
-    )
-
     return () => {
-      console.log('Cleaning up snapshot timers')
+      console.log('Cleaning up snapshot timers and webcam stream')
       snapshotTimersRef.current.forEach(clearTimeout)
       snapshotTimersRef.current = []
       snapshotScheduled.current = false
-    }
-  }, [attemptId, isAssessmentComplete])
-
-  // Clean up webcam stream
-  useEffect(() => {
-    return () => {
-      console.log('Cleaning up webcam stream')
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
         streamRef.current = null
@@ -409,12 +418,14 @@ const AssessmentChatbot = () => {
       )
     }
   }, [
+    attemptId,
     initialStartComplete.current,
     questionPending,
     currentQuestion,
     isAssessmentComplete,
     awaitingNextQuestion,
     usedMcqIds,
+    questionNumber,
   ])
 
   useEffect(() => {
@@ -444,7 +455,15 @@ const AssessmentChatbot = () => {
         setAwaitingNextQuestion(false)
       }, 1500)
     }
-  }, [awaitingNextQuestion, questionPending, isLoading, isAssessmentComplete])
+  }, [
+    awaitingNextQuestion,
+    questionPending,
+    isLoading,
+    isAssessmentComplete,
+    attemptId,
+    questionNumber,
+    usedMcqIds,
+  ])
 
   useEffect(() => {
     if (timeLeft !== null) {
@@ -473,7 +492,7 @@ const AssessmentChatbot = () => {
       }, 1000)
       return () => clearInterval(timer)
     }
-  }, [timeLeft, attemptId, navigate])
+  }, [timeLeft, attemptId, navigate, proctoringRemarks])
 
   useEffect(() => {
     if (chatContainerRef.current) {

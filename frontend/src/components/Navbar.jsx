@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import LinkButton from './LinkButton'
 import Button from './Button'
+import { capitalizeFirstLetter } from '../utils/utils'
 
 const Navbar = ({
   scrollToTestimonials,
@@ -95,7 +96,9 @@ const Navbar = ({
             {user ? (
               <div className="relative group">
                 <button className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-300 focus:outline-none">
-                  <span className="font-medium">{user.name || 'User'}</span>
+                  <span className="font-medium">
+                    {capitalizeFirstLetter(user.name) || 'User'}
+                  </span>
                   {user.profile_img ? (
                     <img
                       src={`http://localhost:5000/static/uploads/${user.profile_img}`}
@@ -106,13 +109,13 @@ const Navbar = ({
                     <User className="h-8 w-8 rounded-full border-2 border-indigo-200 dark:border-indigo-600 p-1 text-gray-700 dark:text-gray-200" />
                   )}
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transform translate-y-2 transition-all duration-200 invisible group-hover:visible">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-md shadow-lg py-1 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transform translate-y-2 transition-all duration-200 invisible group-hover:visible">
                   {user.role === 'candidate' ? (
                     <>
                       <LinkButton
                         to="/candidate/dashboard"
                         variant="link"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                        className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         <Home className="w-4 h-4 mr-2" />
@@ -121,7 +124,7 @@ const Navbar = ({
                       <LinkButton
                         to="/candidate/complete-profile"
                         variant="link"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                        className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         <FileText className="w-4 h-4 mr-2" />
@@ -132,7 +135,7 @@ const Navbar = ({
                     <LinkButton
                       to="/recruiter/dashboard"
                       variant="link"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                      className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
@@ -141,7 +144,7 @@ const Navbar = ({
                   )}
                   <Button
                     variant="link"
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                     onClick={handleLogout}
                   >
                     <LogOut className="w-4 h-4 mr-2" />
@@ -206,7 +209,7 @@ const Navbar = ({
             )}
             <button
               onClick={toggleTheme}
-              className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+              className="w-full text-left px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
               aria-label="Toggle theme"
             >
               {theme === 'light' ? (
@@ -223,7 +226,7 @@ const Navbar = ({
                     <LinkButton
                       to="/candidate/dashboard"
                       variant="link"
-                      className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                      className="px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <Home className="w-4 h-4 mr-2" />
@@ -232,7 +235,7 @@ const Navbar = ({
                     <LinkButton
                       to="/candidate/complete-profile"
                       variant="link"
-                      className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                      className="px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <FileText className="w-4 h-4 mr-2" />
@@ -243,7 +246,7 @@ const Navbar = ({
                   <LinkButton
                     to="/recruiter/dashboard"
                     variant="link"
-                    className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                    className="px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <Briefcase className="w-4 h-4 mr-2" />
@@ -252,7 +255,7 @@ const Navbar = ({
                 )}
                 <Button
                   variant="link"
-                  className="block w-full text-left px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
+                  className="w-full text-left px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 flex items-center"
                   onClick={handleLogout}
                 >
                   <LogOut className="w-4 h-4 mr-2" />

@@ -222,14 +222,14 @@ const CandidateResult = () => {
     totalAttempted > 0 ? ((totalCorrect / totalAttempted) * 100).toFixed(2) : 0
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800 flex flex-col">
+    <div className="min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 flex flex-col">
       <Navbar userType={user.role} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-300" />
           Assessment Results
         </h1>
-        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 mb-8">
+        <div className="bg-white dark:bg-gray-900 p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 mb-8">
           <p className="text-green-700 dark:text-green-300 text-sm font-medium mb-6 flex items-center gap-2">
             <Star className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
             Congratulations! You've completed the assessment.
@@ -241,7 +241,7 @@ const CandidateResult = () => {
                 Performance Summary
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-indigo-50 dark:bg-indigo-900/30 p-5 rounded-md border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-md border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-200 flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
                     Questions Attempted
@@ -250,7 +250,7 @@ const CandidateResult = () => {
                     {totalAttempted} / {totalQuestions}
                   </p>
                 </div>
-                <div className="bg-indigo-50 dark:bg-indigo-900/30 p-5 rounded-md border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-md border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-200 flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
                     Correct Answers
@@ -259,7 +259,7 @@ const CandidateResult = () => {
                     {totalCorrect}
                   </p>
                 </div>
-                <div className="bg-indigo-50 dark:bg-indigo-900/30 p-5 rounded-md border border-gray-200 dark:border-gray-600 hover:hover:shadow-md transition-shadow">
+                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-md border border-gray-200 dark:border-gray-800 hover:hover:shadow-md transition-shadow">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-200 flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
                     Overall Accuracy
@@ -279,7 +279,7 @@ const CandidateResult = () => {
                 {Object.entries(candidateReport).map(([skill, stats]) => (
                   <div
                     key={skill}
-                    className="bg-white dark:bg-gray-800 p-5 rounded-md border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow"
+                    className="bg-white dark:bg-gray-900 p-5 rounded-md border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow"
                   >
                     <h4 className="text-base font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                       <Star className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
@@ -325,7 +325,7 @@ const CandidateResult = () => {
                 <BarChart2 className="w-5 h-5 text-indigo-600 dark:text-indigo-300" />
                 Performance Visualization
               </h3>
-              <div className="bg-white dark:bg-gray-800 p-5 rounded-md border border-gray-200 dark:border-gray-600">
+              <div className="bg-white dark:bg-gray-900 p-5 rounded-md border border-gray-200 dark:border-gray-800">
                 <Bar
                   data={chartData}
                   options={chartOptions}

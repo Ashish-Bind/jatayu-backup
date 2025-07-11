@@ -4,6 +4,13 @@ import html2canvas from 'html2canvas'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
+export function capitalizeFirstLetter(str) {
+  if (typeof str !== 'string' || str.length === 0) {
+    return '' // Handle empty or non-string inputs
+  }
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
 export const parseContent = (content) => {
   if (typeof content !== 'string') return [{ type: 'text', value: content }]
 

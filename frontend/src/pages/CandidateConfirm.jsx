@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Mail, ArrowRight } from 'lucide-react'
 import LinkButton from '../components/LinkButton'
 import Navbar from '../components/Navbar'
-// Adjust path based on your project structure
 
 const CandidateConfirm = () => {
   const [searchParams] = useSearchParams()
@@ -45,14 +44,14 @@ const CandidateConfirm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 flex flex-col">
       <Navbar userType="none" />
-      <div className="flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="flex-grow flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             Email Confirmation
           </h2>
-          <p className="mt-2 text-center text-gray-600">
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-300">
             Already confirmed?{' '}
             <LinkButton to="/candidate/login" variant="link">
               Sign in
@@ -61,7 +60,7 @@ const CandidateConfirm = () => {
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <div className="bg-white dark:bg-gray-900 border dark:border-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
             {error && (
               <div className="text-red-500 text-sm text-center mb-4">
                 {error}
@@ -73,20 +72,20 @@ const CandidateConfirm = () => {
               </div>
             )}
             <div>
-              <p className="text text-gray-600 my-2">
+              <p className="text-sm text-gray-600 dark:text-gray-300 my-2">
                 Please verify your email address by clicking the confirm email
                 button below.
               </p>
             </div>
-            <div className="relative rounded-md shadow-sm mb-4">
+            <div className="mt-1 relative rounded-md shadow-sm mb-4">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400" />
+                <Mail className="h-5 w-5 text-gray-400 dark:text-gray-300" />
               </div>
               <input
                 type="text"
                 value={token || ''}
                 readOnly
-                className="py-2 pl-10 block w-full border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-700 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200"
                 placeholder="Confirmation token"
               />
             </div>
@@ -101,7 +100,7 @@ const CandidateConfirm = () => {
                 }`}
               >
                 {loading ? 'Confirming...' : 'Confirm Email'}
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-5 h-5" />
               </button>
             </div>
           </div>

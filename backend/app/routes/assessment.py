@@ -538,11 +538,11 @@ def end_assessment(attempt_id):
                 is_match, remark = compare_images(snapshot_path, profile_image_path)
                 proctoring_data["remarks"].append(f"Snapshot at {snapshot['timestamp']}: {remark}")
                 snapshot["is_valid"] = is_match
-                try:
-                    if os.path.exists(snapshot_path):
-                        os.remove(snapshot_path)
-                except Exception as e:
-                    logger.error(f"Failed to delete snapshot {snapshot_path}: {str(e)}")
+                # try:
+                #     if os.path.exists(snapshot_path):
+                #         os.remove(snapshot_path)
+                # except Exception as e:
+                #     logger.error(f"Failed to delete snapshot {snapshot_path}: {str(e)}")
         else:
             proctoring_data["remarks"].append("No candidate profile image available for comparison")
 

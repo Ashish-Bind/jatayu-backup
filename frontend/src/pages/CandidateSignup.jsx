@@ -67,7 +67,7 @@ const CandidateSignup = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 flex flex-col">
       <Navbar userType="none" />
       <div className="flex-grow flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -86,7 +86,7 @@ const CandidateSignup = () => {
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <div className="bg-white dark:bg-gray-900 border dark:border-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
             {error && (
               <div className="mb-4 text-sm text-red-600 text-center">
                 {error}
@@ -111,7 +111,7 @@ const CandidateSignup = () => {
                     type="text"
                     autoComplete="name"
                     required
-                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
+                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-700 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200"
                     placeholder="John Doe"
                     value={formData.name}
                     onChange={handleChange}
@@ -136,7 +136,7 @@ const CandidateSignup = () => {
                     type="email"
                     autoComplete="email"
                     required
-                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
+                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-700 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200"
                     placeholder="you@example.com"
                     value={formData.email}
                     onChange={handleChange}
@@ -161,7 +161,7 @@ const CandidateSignup = () => {
                     type="password"
                     autoComplete="new-password"
                     required
-                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
+                    className="py-2 pl-10 block w-full border border-gray-300 dark:border-gray-700 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200"
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}

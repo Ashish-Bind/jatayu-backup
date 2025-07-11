@@ -31,6 +31,7 @@ const CompleteProfile = () => {
     github: '',
     degree: '',
     years_of_experience: '',
+    resume: '',
   })
   const [resume, setResume] = useState(null)
   const [profilePicture, setProfilePicture] = useState(null)
@@ -61,6 +62,7 @@ const CompleteProfile = () => {
           github: data.github || '',
           degree: data.degree || '',
           years_of_experience: data.years_of_experience || '',
+          resume: data.resume || '',
         })
         if (data.profile_picture) {
           setProfilePreview(
@@ -288,7 +290,7 @@ const CompleteProfile = () => {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-8">
             <div className="relative mx-auto w-24 h-24 mb-4 group">
-              <div className="w-full h-full rounded-full overflow-hidden border-4 border-indigo-200 dark:border-indigo-600 group-hover:border-indigo-400 dark:group-hover:border-indigo-300 shadow-sm transition-all">
+              <div className="w-full h-full rounded-full overflow-hidden border-4 border-indigo-500 dark:border-indigo-600 group-hover:border-indigo-600 dark:group-hover:border-indigo-500 shadow-sm transition-all">
                 {profilePreview ? (
                   <img
                     src={profilePreview}
@@ -341,7 +343,7 @@ const CompleteProfile = () => {
             </div>
           )}
 
-          <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600">
+          <div className="bg-white dark:bg-gray-900 p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="col-span-2">
@@ -358,9 +360,7 @@ const CompleteProfile = () => {
                     type="text"
                     name="name"
                     id="name"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 взрос
-
-text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="John Doe"
                     value={formData.name}
                     onChange={handleChange}
@@ -381,7 +381,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     type="text"
                     name="phone"
                     id="phone"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="+1234567890"
                     value={formData.phone}
                     onChange={handleChange}
@@ -401,7 +401,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     type="text"
                     name="location"
                     id="location"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="New York, NY"
                     value={formData.location}
                     onChange={handleChange}
@@ -421,7 +421,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     type="url"
                     name="linkedin"
                     id="linkedin"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="https://linkedin.com/in/johndoe"
                     value={formData.linkedin}
                     onChange={handleChange}
@@ -441,7 +441,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     type="url"
                     name="github"
                     id="github"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="https://github.com/johndoe"
                     value={formData.github}
                     onChange={handleChange}
@@ -461,7 +461,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     type="text"
                     name="degree"
                     id="degree"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="B.Tech in Computer Science"
                     value={formData.degree}
                     onChange={handleChange}
@@ -483,7 +483,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     step="0.1"
                     name="years_of_experience"
                     id="years_of_experience"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="3.5"
                     value={formData.years_of_experience}
                     onChange={handleChange}
@@ -521,7 +521,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     />
                   </div>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <label
                     htmlFor="webcam_image"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
@@ -535,11 +535,18 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                     <video
                       ref={videoRef}
                       autoPlay
-                      className={`w-full max-w-md rounded-md ${
+                      className={`w-full max-w-md m-auto rounded-md ${
                         isWebcamActive ? '' : 'hidden'
                       }`}
                     />
                     <canvas ref={canvasRef} className="hidden" />
+                    {webcamPreview && (
+                      <img
+                        src={webcamPreview}
+                        alt="Webcam preview"
+                        className="w-full max-w-md rounded-md mt-2 m-auto"
+                      />
+                    )}
                     {!isWebcamActive ? (
                       <Button
                         type="button"
@@ -549,7 +556,7 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                         Start Webcam
                       </Button>
                     ) : (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 justify-center w-full">
                         <Button
                           type="button"
                           variant="primary"
@@ -565,13 +572,6 @@ text-sm placeholder-gray-400 dark:placeholder-gray-300"
                           Stop Webcam
                         </Button>
                       </div>
-                    )}
-                    {webcamPreview && (
-                      <img
-                        src={webcamPreview}
-                        alt="Webcam preview"
-                        className="w-full max-w-md rounded-md mt-2"
-                      />
                     )}
                   </div>
                 </div>

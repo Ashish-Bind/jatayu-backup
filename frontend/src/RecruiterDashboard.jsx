@@ -2,8 +2,53 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Navbar from './components/Navbar'
-import { Briefcase, ChevronRight, X, Check, Plus, Trash2 } from 'lucide-react'
+import {
+  Briefcase,
+  ChevronRight,
+  X,
+  Check,
+  Plus,
+  Trash2,
+  Calendar,
+  User2,
+  Badge,
+  Award,
+  Code,
+  User,
+} from 'lucide-react'
 import Button from './components/Button'
+import { format } from 'date-fns'
+import LinkButton from './components/LinkButton'
+import FormInput from './components/FormInput'
+
+const formatDate = (date) => {
+  return format(new Date(date), 'MMM d, yyyy')
+}
+
+const getPriorityColor = (priority) => {
+  switch (priority) {
+    case 5:
+      return 'bg-green-300 text-green-800 dark:bg-green-900 dark:text-green-200' // Low priority
+    case 3:
+      return 'bg-blue-300 text-blue-800 dark:bg-blue-900 dark:text-blue-200' // Medium priority
+    case 2:
+      return 'bg-yellow-300 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' // High priority
+    default:
+      return 'bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+  }
+}
+
+const degreeOptions = [
+  { label: 'Bachelor of Technology (B.Tech)', value: 'B.Tech' },
+  { label: 'Bachelor of Science (B.Sc)', value: 'B.Sc' },
+  { label: 'Bachelor of Engineering (B.E)', value: 'B.E' },
+  { label: 'Master of Technology (M.Tech)', value: 'M.Tech' },
+  { label: 'Master of Science (M.Sc)', value: 'M.Sc' },
+  { label: 'Master of Business Administration (MBA)', value: 'MBA' },
+  { label: 'Bachelor of Arts (B.A)', value: 'B.A' },
+  { label: 'Master of Arts (M.A)', value: 'M.A' },
+  { label: 'Doctor of Philosophy (Ph.D)', value: 'Ph.D' },
+]
 
 const RecruiterDashboard = () => {
   const { user } = useAuth()
@@ -22,9 +67,10 @@ const RecruiterDashboard = () => {
     schedule_start: '',
     schedule_end: '',
     degree_required: '',
-    description: '',
+    job_description: '',
     custom_prompt: '',
     skills: [],
+    degree_branch: '',
   })
   const [newSkill, setNewSkill] = useState({ name: '', priority: 'low' })
 
@@ -135,6 +181,7 @@ const RecruiterDashboard = () => {
           description: '',
           custom_prompt: '',
           skills: [],
+          degree_branch: '',
         })
         setNewSkill({ name: '', priority: 'low' })
         setIsFormOpen(false)
@@ -197,211 +244,147 @@ const RecruiterDashboard = () => {
         </Button>
 
         {isFormOpen && (
-          <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-indigo-600 dark:text-indigo-300" />
+          <div className="bg-white dark:bg-gray-900 p-6 sm:p-8 rounded-md shadow-sm border border-gray-100 dark:border-gray-800 mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
+              <Briefcase className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
               Create New Assessment
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="job_title"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Job Title
-                  </label>
-                  <input
-                    type="text"
-                    name="job_title"
-                    id="job_title"
-                    value={formData.job_title}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    placeholder="Software Engineer"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="company"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Company
-                  </label>
-                  <input
-                    type="text"
-                    name="company"
-                    id="company"
-                    value={formData.company}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    placeholder="Tech Corp"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="experience_min"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Min Experience (years)
-                  </label>
-                  <input
-                    type="number"
-                    name="experience_min"
-                    id="experience_min"
-                    value={formData.experience_min}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    min="0"
-                    step="0.1"
-                    placeholder="2"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="experience_max"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Max Experience (years)
-                  </label>
-                  <input
-                    type="number"
-                    name="experience_max"
-                    id="experience_max"
-                    value={formData.experience_max}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    min={formData.experience_min || 0}
-                    step="0.1"
-                    placeholder="5"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="duration"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Duration (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    name="duration"
-                    id="duration"
-                    value={formData.duration}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    min="1"
-                    placeholder="30"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="num_questions"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Number of Questions
-                  </label>
-                  <input
-                    type="number"
-                    name="num_questions"
-                    id="num_questions"
-                    value={formData.num_questions}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    min="1"
-                    placeholder="10"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="schedule_start"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Start Date
-                  </label>
-                  <input
-                    type="datetime-local"
-                    name="schedule_start"
-                    id="schedule_start"
-                    value={
-                      formData.schedule_start
-                        ? formData.schedule_start.slice(0, 16)
-                        : ''
-                    }
-                    onChange={(e) => {
-                      const date = new Date(e.target.value)
-                      setFormData({
-                        ...formData,
-                        schedule_start: date.toISOString(),
-                      })
-                    }}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="schedule_end"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    End Date
-                  </label>
-                  <input
-                    type="datetime-local"
-                    name="schedule_end"
-                    id="schedule_end"
-                    value={
-                      formData.schedule_end
-                        ? formData.schedule_end.slice(0, 16)
-                        : ''
-                    }
-                    onChange={(e) => {
-                      const date = new Date(e.target.value)
-                      setFormData({
-                        ...formData,
-                        schedule_end: date.toISOString(),
-                      })
-                    }}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="degree_required"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-                  >
-                    Required Degree
-                  </label>
-                  <input
-                    type="text"
-                    name="degree_required"
-                    id="degree_required"
-                    value={formData.degree_required}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    placeholder="B.Tech in Computer Science"
-                  />
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <FormInput
+                  label="Job Title"
+                  id="job_title"
+                  name="job_title"
+                  value={formData.job_title}
+                  onChange={handleInputChange}
+                  placeholder="Software Engineer"
+                  required
+                />
+                <FormInput
+                  label="Company"
+                  id="company"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleInputChange}
+                  placeholder="Tech Corp"
+                  required
+                />
+                <FormInput
+                  label="Min Experience (years)"
+                  id="experience_min"
+                  type="number"
+                  name="experience_min"
+                  value={formData.experience_min}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.1"
+                  placeholder="2"
+                  required
+                />
+                <FormInput
+                  label="Max Experience (years)"
+                  id="experience_max"
+                  type="number"
+                  name="experience_max"
+                  value={formData.experience_max}
+                  onChange={handleInputChange}
+                  min={formData.experience_min || 0}
+                  step="0.1"
+                  placeholder="5"
+                  required
+                />
+                <FormInput
+                  label="Duration (minutes)"
+                  id="duration"
+                  type="number"
+                  name="duration"
+                  value={formData.duration}
+                  onChange={handleInputChange}
+                  min="1"
+                  placeholder="30"
+                  required
+                />
+                <FormInput
+                  label="Number of Questions"
+                  id="num_questions"
+                  type="number"
+                  name="num_questions"
+                  value={formData.num_questions}
+                  onChange={handleInputChange}
+                  min="1"
+                  placeholder="10"
+                  required
+                />
+                <FormInput
+                  label="Start Date"
+                  id="schedule_start"
+                  type="datetime-local"
+                  name="schedule_start"
+                  value={
+                    formData.schedule_start
+                      ? formData.schedule_start.slice(0, 16)
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const date = new Date(e.target.value)
+                    setFormData({
+                      ...formData,
+                      schedule_start: date.toISOString(),
+                    })
+                  }}
+                  required
+                />
+                <FormInput
+                  label="End Date"
+                  id="schedule_end"
+                  type="datetime-local"
+                  name="schedule_end"
+                  value={
+                    formData.schedule_end
+                      ? formData.schedule_end.slice(0, 16)
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const date = new Date(e.target.value)
+                    setFormData({
+                      ...formData,
+                      schedule_end: date.toISOString(),
+                    })
+                  }}
+                  required
+                />
+                <FormInput
+                  label="Degree"
+                  id="degree_required"
+                  type="select"
+                  name="degree_required"
+                  value={formData.degree_required}
+                  onChange={handleInputChange}
+                  options={degreeOptions}
+                  placeholder={'Select a degree'}
+                  required
+                />
+                <FormInput
+                  label="Branch/Specialization"
+                  id="degree_branch"
+                  name="degree_branch"
+                  value={formData.degree_branch || ''}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Computer Science"
+                />
                 <div className="sm:col-span-2">
                   <label
-                    htmlFor="description"
+                    htmlFor="job_description"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     Description
                   </label>
                   <textarea
-                    name="description"
-                    id="description"
-                    value={formData.description}
+                    id="job_description"
+                    name="job_description"
+                    value={formData.job_description}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 resize-y"
                     rows="5"
                     placeholder="E.g., Looking for a backend engineer with experience in Django, REST APIs, and PostgreSQL..."
                   />
@@ -414,11 +397,11 @@ const RecruiterDashboard = () => {
                     Customized Prompt
                   </label>
                   <textarea
-                    name="custom_prompt"
                     id="custom_prompt"
+                    name="custom_prompt"
                     value={formData.custom_prompt}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 resize-y"
                     rows="4"
                     placeholder="E.g., I want code snippet based questions..."
                   />
@@ -427,13 +410,13 @@ const RecruiterDashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                     Skills
                   </label>
-                  <div className="flex gap-4 mb-2">
+                  <div className="flex gap-4 mb-4">
                     <input
                       type="text"
                       name="name"
                       value={newSkill.name}
                       onChange={handleSkillChange}
-                      className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                      className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200"
                       placeholder="e.g., Python"
                     />
                     <select
@@ -450,18 +433,18 @@ const RecruiterDashboard = () => {
                       type="button"
                       onClick={addSkill}
                       variant="primary"
-                      className="flex items-center gap-2 w-fit"
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white dark:text-gray-100 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
                     >
                       Add
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
                   {formData.skills.length > 0 && (
-                    <ul className="space-y-2">
+                    <ul className="space-y-3">
                       {formData.skills.map((skill, index) => (
                         <li
                           key={index}
-                          className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded-md"
+                          className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-md shadow-sm"
                         >
                           <span className="text-sm text-gray-700 dark:text-gray-200">
                             {skill.name} ({skill.priority})
@@ -469,9 +452,9 @@ const RecruiterDashboard = () => {
                           <button
                             type="button"
                             onClick={() => removeSkill(index)}
-                            className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 focus:outline-none"
+                            className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 focus:outline-none transition-colors"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </li>
                       ))}
@@ -479,14 +462,14 @@ const RecruiterDashboard = () => {
                   )}
                 </div>
               </div>
-              <div className="flex justify-end mt-4">
+              <div className="flex justify-end">
                 <Button
                   type="submit"
                   variant="primary"
-                  className="flex items-center justify-center gap-2"
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white dark:text-gray-100 rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-md hover:shadow-lg"
                 >
                   Create Assessment
-                  <Briefcase className="w-4 h-4" />
+                  <Briefcase className="w-5 h-5" />
                 </Button>
               </div>
             </form>
@@ -502,52 +485,66 @@ const RecruiterDashboard = () => {
             {activeAssessments.map((assessment) => (
               <div
                 key={assessment.job_id}
-                className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-600"
+                className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded-md">
-                    <Briefcase className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
+                    <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                       {assessment.job_title}
                     </h3>
-                    <p className="text-sm text-gray-700 dark:text-gray-200">
-                      Company: {assessment.company}
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {assessment.company}
                     </p>
                   </div>
                 </div>
-                <div className="space-y-2 mb-4 text-sm text-gray-700 dark:text-gray-200">
-                  <p>
-                    Experience: {assessment.experience_min}-
-                    {assessment.experience_max} years
-                  </p>
-                  <p>
-                    Schedule:{' '}
-                    {new Date(
-                      assessment.schedule_start || assessment.schedule
-                    ).toLocaleString()}{' '}
-                    -{' '}
-                    {new Date(
-                      assessment.schedule_end || assessment.schedule
-                    ).toLocaleString()}
-                  </p>
+
+                <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span className="text-sm">
+                      {assessment.experience_min}-{assessment.experience_max}{' '}
+                      years
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <div className="inline-flex items-center rounded-md">
+                      {formatDate(
+                        assessment.schedule_start || assessment.schedule
+                      )}{' '}
+                      -{' '}
+                      {formatDate(
+                        assessment.schedule_end || assessment.schedule
+                      )}
+                    </div>
+                  </div>
                   {assessment.skills && assessment.skills.length > 0 && (
-                    <p>
-                      Skills:{' '}
-                      {assessment.skills
-                        .map((s) => `${s.name} (${s.priority})`)
-                        .join(', ')}
-                    </p>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      {assessment.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
+                            skill.priority
+                          )}`}
+                        >
+                          {skill.name}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <Link
+
+                <LinkButton
                   to={`/recruiter/candidates/${assessment.job_id}`}
-                  className="inline-flex items-center text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-400 font-medium text-sm"
+                  variant="primary"
+                  className={'flex items-center gap-2 justify-center'}
                 >
                   View Candidates
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Link>
+                </LinkButton>
               </div>
             ))}
           </div>
@@ -568,67 +565,87 @@ const RecruiterDashboard = () => {
             {pastAssessments.map((assessment) => (
               <div
                 key={assessment.job_id}
-                className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-600"
+                className="bg-white dark:bg-gray-900 p-6 rounded-md shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full "
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded-md">
-                    <Briefcase className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
+                    <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                       {assessment.job_title}
                     </h3>
-                    <p className="text-sm text-gray-700 dark:text-gray-200">
-                      Company: {assessment.company}
+                    <p className="text-base text-gray-600 dark:text-gray-300">
+                      {assessment.company}
                     </p>
                   </div>
                 </div>
-                <div className="space-y-2 mb-4 text-sm text-gray-700 dark:text-gray-200">
-                  <p>
-                    Experience: {assessment.experience_min}-
-                    {assessment.experience_max} years
-                  </p>
-                  <p>
-                    Schedule:{' '}
-                    {new Date(
-                      assessment.schedule_start || assessment.schedule
-                    ).toLocaleString()}{' '}
-                    -{' '}
-                    {new Date(
-                      assessment.schedule_end || assessment.schedule
-                    ).toLocaleString()}
-                  </p>
+
+                <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-5">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>
+                      {assessment.experience_min}-{assessment.experience_max}{' '}
+                      years
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <div className="inline-flex items-center rounded-md text-sm">
+                      {formatDate(
+                        assessment.schedule_start || assessment.schedule
+                      )}{' '}
+                      -{' '}
+                      {formatDate(
+                        assessment.schedule_end || assessment.schedule
+                      )}
+                    </div>
+                  </div>
                   {assessment.skills && assessment.skills.length > 0 && (
-                    <p>
-                      Skills:{' '}
-                      {assessment.skills
-                        .map((s) => `${s.name} (${s.priority})`)
-                        .join(', ')}
-                    </p>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      {assessment.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                            skill.priority
+                          )}`}
+                        >
+                          {skill.name}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-4">
-                  <Link
-                    to={`/recruiter/candidates/${assessment.job_id}`}
-                    className="inline-flex items-center text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-400 font-medium text-sm"
-                  >
-                    View Candidates
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
-                  <Link
-                    to={`/recruiter/report/${assessment.job_id}`}
-                    className="inline-flex items-center text-green-600 dark:text-green-300 hover:text-green-800 dark:hover:text-green-400 font-medium text-sm"
-                  >
-                    View Report
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
-                  <Link
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2 justify-between">
+                    <LinkButton
+                      to={`/recruiter/candidates/${assessment.job_id}`}
+                      variant="link"
+                      className={
+                        'flex items-center gap-2 justify-center hover:underline'
+                      }
+                    >
+                      View Candidates
+                    </LinkButton>
+                    <LinkButton
+                      to={`/recruiter/report/${assessment.job_id}`}
+                      variant="link"
+                      className={
+                        'flex items-center gap-2 justify-center hover:underline'
+                      }
+                    >
+                      View Report
+                    </LinkButton>
+                  </div>
+                  <LinkButton
                     to={`/recruiter/combined-report/${assessment.job_id}`}
-                    className="inline-flex items-center text-purple-600 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-400 font-medium text-sm"
+                    variant="primary"
+                    className={'flex items-center gap-2 justify-center w-full'}
                   >
                     View Combined Report
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
+                  </LinkButton>
                 </div>
               </div>
             ))}

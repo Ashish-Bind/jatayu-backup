@@ -20,7 +20,7 @@ const AssessmentMessages = ({
         onCopy={(e) => preventCopyPaste(e, () => {})}
         onPaste={(e) => preventCopyPaste(e, () => {})}
         onCut={(e) => preventCopyPaste(e, () => {})}
-        className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 h-[32rem] w-[48rem] overflow-y-auto mb-6 relative"
+        className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 h-[42rem] w-[56rem] overflow-y-auto mb-6 relative"
       >
         {messages.map((msg, index) => (
           <div
