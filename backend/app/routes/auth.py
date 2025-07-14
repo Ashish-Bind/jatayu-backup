@@ -1,4 +1,3 @@
-# app/routes/auth.py
 from flask import Blueprint, request, jsonify, session
 from app import db, mail, limiter
 from app.models.user import User, PasswordResetToken
@@ -27,7 +26,7 @@ def verify_email(email, api_key=os.getenv('EMAILABLE_API_KEY')):
     except requests.RequestException as e:
         return False, f'Email verification failed: {str(e)}'
 
-@auth_bp.route('/signup',  methods=['POST'])
+@auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.json
     print(data)
@@ -114,15 +113,24 @@ def check_auth():
         user = User.query.get(session['user_id'])
         candidate = Candidate.query.filter_by(user_id=user.id).first()
         if user:
-            return jsonify({
+            response = {
                 'user': {
                     'id': user.id,
                     'email': user.email,
                     'role': user.role,
                     'name': user.name,
-                    'profile_img': candidate.profile_picture if user.role == 'candidate' and candidate.profile_picture else '' 
+                    'profile_img': candidate.profile_picture if user.role == 'candidate' and candidate else ''
                 }
-            })
+            }
+            if candidate:
+                response['user'].update({
+                    'candidate_id': candidate.candidate_id,
+                    'degree_id': candidate.degree_id,
+                    'degree_name': candidate.degree.degree_name if candidate.degree else None,
+                    'years_of_experience': candidate.years_of_experience,
+                    'is_profile_complete': candidate.is_profile_complete
+                })
+            return jsonify(response)
     return jsonify({'error': 'Not authenticated'}), 401
 
 @auth_bp.route('/forgot-password', methods=['POST'])

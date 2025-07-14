@@ -1,5 +1,4 @@
 from app import db
-import uuid
 
 class Candidate(db.Model):
     __tablename__ = 'candidates'
@@ -12,12 +11,14 @@ class Candidate(db.Model):
     location = db.Column(db.String(100))
     linkedin = db.Column(db.String(200))
     github = db.Column(db.String(200))
-    degree = db.Column(db.String(100))
+    degree_id = db.Column(db.Integer, db.ForeignKey('degrees.degree_id'))  # Updated to foreign key
     years_of_experience = db.Column(db.Float, nullable=False)
     resume = db.Column(db.String(200))
     profile_picture = db.Column(db.String(200))
     is_profile_complete = db.Column(db.Boolean, default=False)
     camera_image = db.Column(db.String(200))
 
-    def _repr_(self):
-        return f'<Candidate {self.name}>'
+    degree = db.relationship('Degree', backref='candidates')  # Relationship to Degree model
+
+    def __repr__(self):  # Fixed typo from _repr_ to __repr__
+        return f'<Candidate {self.name}>'

@@ -12,6 +12,8 @@ from app.models.assessment_registration import AssessmentRegistration
 from app.models.skill import Skill
 from app.models.candidate_skill import CandidateSkill
 from app.models.assessment_state import AssessmentState
+from app.models.degree import Degree
+from app.models.resume_json import ResumeJson
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone, timedelta
 import google.generativeai as genai
@@ -119,10 +121,16 @@ Resume:
 
 def parse_json_output(json_string):
     try:
+        if not json_string:
+            return None
         cleaned = json_string.strip().removeprefix("```json").removesuffix("```").strip()
         result = json.loads(cleaned)
         return result
     except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error in parse_json_output: {str(e)}")
         return None
 
 def normalize_phone_number(phone):
@@ -150,7 +158,7 @@ def calculate_total_experience(work_experience):
         return 0.0
 
     intervals = []
-    current_date = datetime(2025, 7, 9)
+    current_date = datetime(2025, 7, 13)
 
     for exp in work_experience:
         start_date_str = exp.get('Start Date', '')
@@ -305,13 +313,22 @@ def get_profile_by_user(user_id):
         'location': candidate.location,
         'linkedin': candidate.linkedin,
         'github': candidate.github,
-        'degree': candidate.degree,
+        'degree_id': candidate.degree_id,
         'years_of_experience': candidate.years_of_experience,
         'resume': candidate.resume,
         'profile_picture': candidate.profile_picture,
         'camera_image': candidate.camera_image,
         'is_profile_complete': candidate.is_profile_complete
     })
+
+@candidate_api_bp.route('/degrees', methods=['GET'])
+def get_degrees():
+    """Retrieve the list of available degrees."""
+    degrees = Degree.query.all()
+    return jsonify([
+        {'degree_id': degree.degree_id, 'degree_name': degree.degree_name}
+        for degree in degrees
+    ])
 
 @candidate_api_bp.route('/profile/<int:user_id>', methods=['POST'])
 def update_profile(user_id):
@@ -323,20 +340,25 @@ def update_profile(user_id):
     form_location = request.form.get('location')
     form_linkedin = request.form.get('linkedin')
     form_github = request.form.get('github')
-    form_degree = request.form.get('degree')
+    form_degree_id = request.form.get('degree_id')
     resume_file = request.files.get('resume')
     profile_pic_file = request.files.get('profile_picture')
     webcam_image_file = request.files.get('webcam_image')
 
-    if not form_name or not form_experience:
-        return jsonify({'error': 'Name and years of experience are required.'}), 400
+    if not form_name or not form_experience or not form_degree_id:
+        return jsonify({'error': 'Name, years of experience, and degree are required.'}), 400
     try:
         form_experience = float(form_experience)
+        form_degree_id = int(form_degree_id)
     except ValueError:
-        return jsonify({'error': 'Years of experience must be a number.'}), 400
+        return jsonify({'error': 'Years of experience must be a number and degree_id must be valid.'}), 400
+
+    # Validate degree_id exists
+    if not Degree.query.get(form_degree_id):
+        return jsonify({'error': 'Invalid degree selected.'}), 400
 
     try:
-        # Validate face verification first
+        # Validate face verification (mandatory for every update)
         face_verification_result = None
         if profile_pic_file and webcam_image_file:
             face_verification_result = verify_faces(profile_pic_file, webcam_image_file)
@@ -346,10 +368,10 @@ def update_profile(user_id):
                 }), 400
             profile_pic_file.seek(0)
             webcam_image_file.seek(0)
-        elif not profile_pic_file and not webcam_image_file:
-            return jsonify({'error': 'At least one of profile picture or webcam image is required.'}), 400
+        else:
+            return jsonify({'error': 'Both profile picture and webcam image are required for verification.'}), 400
 
-        # Validate and process resume
+        # Validate and process resume if provided
         parsed_data = None
         if resume_file:
             resume_text = extract_text_from_pdf(resume_file)
@@ -364,6 +386,19 @@ def update_profile(user_id):
             if not parsed_data:
                 return jsonify({'error': 'Failed to parse Gemini API output.'}), 400
 
+            # Clean the gemini_output to remove markdown formatting and store as valid JSON string
+            cleaned_resume = parse_json_output(gemini_output)
+            if not cleaned_resume:
+                return jsonify({'error': 'Failed to parse Gemini API output for storage.'}), 400
+            cleaned_resume_string = json.dumps(cleaned_resume)
+
+            # Store cleaned JSON in resume_json table
+            resume_json_entry = ResumeJson(
+                candidate_id=candidate.candidate_id,
+                raw_resume=cleaned_resume_string
+            )
+            db.session.add(resume_json_entry)
+
             resume_name = parsed_data.get("name", "")
             resume_phone = normalize_phone_number(parsed_data.get("phone", ""))
             if not compare_strings(form_name, resume_name):
@@ -373,7 +408,7 @@ def update_profile(user_id):
 
             resume_experience = calculate_total_experience(parsed_data.get("Work Experience", []))
             if form_experience > 0 and resume_experience == 0:
-                return jsonify({'error': 'No work experience found in resume, but form claims experience. Please verifies.'}), 400
+                return jsonify({'error': 'No work experience found in resume, but form claims experience. Please verify.'}), 400
             elif form_experience > 0:
                 min_allowed = 0.8 * form_experience
                 if not (min_allowed <= resume_experience):
@@ -387,7 +422,7 @@ def update_profile(user_id):
         candidate.location = form_location
         candidate.linkedin = form_linkedin
         candidate.github = form_github
-        candidate.degree = form_degree
+        candidate.degree_id = form_degree_id
         candidate.years_of_experience = form_experience
 
         if resume_file:
@@ -454,7 +489,7 @@ def update_profile(user_id):
 
         return jsonify({
             'message': 'Profile updated successfully',
-            'face_verification': face_verification_result if face_verification_result else None
+            'face_verification': face_verification_result
         }), 200
 
     except IntegrityError as e:
@@ -466,20 +501,18 @@ def update_profile(user_id):
         elif 'github' in str(e):
             return jsonify({'error': 'This GitHub profile is already in use.'}), 400
         else:
-            return jsonify({'error': 'An error occurred while updating your profile.'}), 400
+            return jsonify({'error': 'An error occurred while updating your project.'}), 400
     except ValueError as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
+
 @candidate_api_bp.route('/eligible-assessments/<int:user_id>', methods=['GET'])
 def get_eligible_assessments(user_id):
-    """Retrieve eligible and attempted assessments for a candidate."""
+    """Retrieve eligible and all assessments for a candidate."""
     candidate = Candidate.query.filter_by(user_id=user_id).first_or_404()
-
-    if not candidate.is_profile_complete:
-        return jsonify({'eligible_assessments': [], 'attempted_assessments': []}), 200
 
     # Current date and time in IST (UTC+5:30)
     current_time = datetime.now(timezone.utc).astimezone(timezone(offset=timedelta(hours=5, minutes=30)))
@@ -488,6 +521,7 @@ def get_eligible_assessments(user_id):
         joinedload(JobDescription.required_skills).joinedload(RequiredSkill.skill)
     ).all()
     eligible_assessments = []
+    all_assessments = []
     attempted_assessments = set()
 
     # Check for completed or started attempts
@@ -510,48 +544,45 @@ def get_eligible_assessments(user_id):
             if not has_attempt:
                 continue
 
-        # Check years of experience
+        # Check eligibility
         experience_match = (
             assessment.experience_min <= candidate.years_of_experience <= assessment.experience_max
         )
-
-        # Check degree
         degree_match = False
         if assessment.degree_required and candidate.degree:
-            degree_match = assessment.degree_required.lower() == candidate.degree.lower()
+            degree = candidate.degree.degree_name if candidate.degree else None
+            degree_match = degree and assessment.degree_required.lower() == degree.lower()
         elif not assessment.degree_required:
             degree_match = True
 
-        # Exclude if already attempted
-        if assessment.job_id in attempted_assessments:
-            continue
-
-        if experience_match and degree_match:
-            is_registered = AssessmentRegistration.query.filter_by(
+        assessment_data = {
+            'job_id': assessment.job_id,
+            'job_title': assessment.job_title,
+            'company': assessment.company,
+            'experience_min': assessment.experience_min,
+            'experience_max': assessment.experience_max,
+            'degree_required': assessment.degree_required,
+            'schedule_start': assessment.schedule_start.isoformat() if assessment.schedule_start else None,
+            'schedule_end': assessment.schedule_end.isoformat() if assessment.schedule_end else None,
+            'duration': assessment.duration,
+            'num_questions': assessment.num_questions,
+            'job_description': assessment.job_description if hasattr(assessment, 'job_description') else None,
+            'is_registered': AssessmentRegistration.query.filter_by(
                 candidate_id=candidate.candidate_id,
                 job_id=assessment.job_id
-            ).first() is not None
+            ).first() is not None,
+            'skills': [
+                {'name': rs.skill.name, 'priority': rs.priority}
+                for rs in assessment.required_skills
+            ],
+            'is_eligible': experience_match and degree_match and assessment.job_id not in attempted_assessments
+        }
 
-            eligible_assessments.append({
-                'job_id': assessment.job_id,
-                'job_title': assessment.job_title,
-                'company': assessment.company,
-                'experience_min': assessment.experience_min,
-                'experience_max': assessment.experience_max,
-                'degree_required': assessment.degree_required,
-                'schedule_start': assessment.schedule_start.isoformat() if assessment.schedule_start else None,
-                'schedule_end': assessment.schedule_end.isoformat() if assessment.schedule_end else None,
-                'duration': assessment.duration,
-                'num_questions': assessment.num_questions,
-                'job_description': assessment.job_description if hasattr(assessment, 'job_description') else None,
-                'is_registered': is_registered,
-                'skills': [
-                    {'name': rs.skill.name, 'priority': rs.priority}
-                    for rs in assessment.required_skills
-                ]
-            })
+        all_assessments.append(assessment_data)
+        if assessment_data['is_eligible'] and candidate.is_profile_complete:
+            eligible_assessments.append(assessment_data)
 
-    # Fetch attempted assessments (align with /api/assessment/all)
+    # Fetch attempted assessments
     attempted_assessments_data = []
     for attempt in attempts:
         if attempt.status in ['started', 'completed']:
@@ -568,9 +599,9 @@ def get_eligible_assessments(user_id):
 
     response = {
         'eligible_assessments': eligible_assessments,
+        'all_assessments': all_assessments,
         'attempted_assessments': attempted_assessments_data
     }
-    # logger.debug(f"Returning assessments at {current_time}: {response}")
     return jsonify(response), 200
 
 @candidate_api_bp.route('/register-assessment', methods=['POST'])
@@ -585,6 +616,26 @@ def register_assessment():
 
     candidate = Candidate.query.filter_by(user_id=candidate_id).first_or_404()
     job = JobDescription.query.get_or_404(job_id)
+
+    # Check eligibility
+    experience_match = (
+        job.experience_min <= candidate.years_of_experience <= job.experience_max
+    )
+    degree_match = False
+    if job.degree_required and candidate.degree:
+        degree_match = job.degree_required.lower() == candidate.degree.degree_name.lower()
+    elif not job.degree_required:
+        degree_match = True
+
+    if not (experience_match and degree_match):
+        return jsonify({
+            'error': 'You are not eligible for this job. Please update your profile to meet the requirements.',
+            'requirements': {
+                'experience_min': job.experience_min,
+                'experience_max': job.experience_max,
+                'degree_required': job.degree_required
+            }
+        }), 403
 
     existing_registration = AssessmentRegistration.query.filter_by(
         candidate_id=candidate.candidate_id,

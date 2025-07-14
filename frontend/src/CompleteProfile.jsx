@@ -19,6 +19,7 @@ import {
 import Navbar from './components/Navbar'
 import LinkButton from './components/LinkButton'
 import Button from './components/Button'
+import Select from 'react-select' // Added for dropdown
 
 const CompleteProfile = () => {
   const { user } = useAuth()
@@ -29,10 +30,11 @@ const CompleteProfile = () => {
     location: '',
     linkedin: '',
     github: '',
-    degree: '',
+    degree_id: '', // Updated to degree_id
     years_of_experience: '',
     resume: '',
   })
+  const [degrees, setDegrees] = useState([]) // State for degree options
   const [resume, setResume] = useState(null)
   const [profilePicture, setProfilePicture] = useState(null)
   const [profilePreview, setProfilePreview] = useState(null)
@@ -60,7 +62,7 @@ const CompleteProfile = () => {
           location: data.location || '',
           linkedin: data.linkedin || '',
           github: data.github || '',
-          degree: data.degree || '',
+          degree_id: data.degree_id || '', // Updated to degree_id
           years_of_experience: data.years_of_experience || '',
           resume: data.resume || '',
         })
@@ -82,6 +84,23 @@ const CompleteProfile = () => {
           type: 'error',
         })
       })
+
+    // Fetch degrees
+    fetch('http://localhost:5000/api/candidate/degrees')
+      .then((response) => {
+        if (!response.ok) throw new Error('Failed to fetch degrees')
+        return response.json()
+      })
+      .then((data) => {
+        setDegrees(data.map(degree => ({ value: degree.degree_id, label: degree.degree_name })))
+      })
+      .catch((error) => {
+        console.error('Error fetching degrees:', error)
+        setMessage({
+          text: 'Failed to fetch degree options. Please try again.',
+          type: 'error',
+        })
+      })
   }, [user.id])
 
   // Handle webcam stream setup
@@ -96,10 +115,15 @@ const CompleteProfile = () => {
     setFormData({ ...formData, [name]: value })
   }
 
+  const handleDegreeChange = (selectedOption) => {
+    setFormData({ ...formData, degree_id: selectedOption ? selectedOption.value : '' })
+  }
+
   const handleFileChange = (e) => {
     const { name, files } = e.target
     if (name === 'resume') {
       setResume(files[0])
+      setFormData({ ...formData, resume: files[0] ? files[0].name : formData.resume })
     }
     if (name === 'profile_picture') {
       const file = files[0]
@@ -162,9 +186,9 @@ const CompleteProfile = () => {
     setIsLoading(true)
     setMessage({ text: '', type: '' })
 
-    if (!profilePicture && !webcamImage) {
+    if (!profilePicture || !webcamImage) {
       setMessage({
-        text: 'Please provide either a profile picture or a webcam image.',
+        text: 'Both profile picture and webcam image are required for verification.',
         type: 'error',
       })
       setIsLoading(false)
@@ -173,7 +197,9 @@ const CompleteProfile = () => {
 
     const data = new FormData()
     for (const key in formData) {
-      data.append(key, formData[key])
+      if (key !== 'resume') {
+        data.append(key, formData[key])
+      }
     }
     if (resume) data.append('resume', resume)
     if (profilePicture) data.append('profile_picture', profilePicture)
@@ -189,27 +215,19 @@ const CompleteProfile = () => {
       )
       const result = await response.json()
       if (response.ok) {
-        // Log face verification details
-        if (result.face_verification) {
-          console.log('Face Verification Result:', result.face_verification)
-          console.log(
-            `Similarity Score: ${result.face_verification.similarity}%`
-          )
-          console.log(
-            `Verification ${
-              result.face_verification.verified ? 'successful' : 'failed'
-            }`
-          )
-          setMessage({
-            text: `Profile updated successfully! Face verification: ${result.face_verification.similarity}% similarity.`,
-            type: 'success',
-          })
-        } else {
-          setMessage({
-            text: 'Profile updated successfully! Skills have been extracted from your resume.',
-            type: 'success',
-          })
-        }
+        console.log('Face Verification Result:', result.face_verification)
+        console.log(
+          `Similarity Score: ${result.face_verification.similarity}%`
+        )
+        console.log(
+          `Verification ${
+            result.face_verification.verified ? 'successful' : 'failed'
+          }`
+        )
+        setMessage({
+          text: `Profile updated successfully! Face verification: ${result.face_verification.similarity}% similarity.`,
+          type: 'success',
+        })
         setTimeout(() => navigate('/candidate/dashboard'), 1500)
       } else {
         setMessage({
@@ -218,29 +236,6 @@ const CompleteProfile = () => {
             'An error occurred while updating your profile. Please try again.',
           type: 'error',
         })
-        // Reset form fields on error to allow retry
-        setFormData({
-          name: candidate.name || '',
-          phone: candidate.phone || '',
-          location: candidate.location || '',
-          linkedin: candidate.linkedin || '',
-          github: candidate.github || '',
-          degree: candidate.degree || '',
-          years_of_experience: candidate.years_of_experience || '',
-        })
-        setResume(null)
-        setProfilePicture(null)
-        setProfilePreview(
-          candidate.profile_picture
-            ? `http://localhost:5000/static/uploads/${candidate.profile_picture}`
-            : null
-        )
-        setWebcamImage(null)
-        setWebcamPreview(
-          candidate.camera_image
-            ? `http://localhost:5000/static/uploads/${candidate.camera_image}`
-            : null
-        )
       }
     } catch (error) {
       console.error('Submission Error:', error)
@@ -248,31 +243,9 @@ const CompleteProfile = () => {
         text: 'An unexpected error occurred. Please try again.',
         type: 'error',
       })
-      // Reset form fields on error
-      setFormData({
-        name: candidate.name || '',
-        phone: candidate.phone || '',
-        location: candidate.location || '',
-        linkedin: candidate.linkedin || '',
-        github: candidate.github || '',
-        degree: candidate.degree || '',
-        years_of_experience: candidate.years_of_experience || '',
-      })
-      setResume(null)
-      setProfilePicture(null)
-      setProfilePreview(
-        candidate.profile_picture
-          ? `http://localhost:5000/static/uploads/${candidate.profile_picture}`
-          : null
-      )
-      setWebcamImage(null)
-      setWebcamPreview(
-        candidate.camera_image
-          ? `http://localhost:5000/static/uploads/${candidate.camera_image}`
-          : null
-      )
     } finally {
       setIsLoading(false)
+      stopWebcam()
     }
   }
 
@@ -319,10 +292,12 @@ const CompleteProfile = () => {
               </label>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Complete Your Profile
+              {candidate.is_profile_complete ? 'Edit Your Profile' : 'Complete Your Profile'}
             </h1>
             <p className="text-sm text-gray-700 dark:text-gray-200">
-              Fill in your details to get the most out of our platform
+              {candidate.is_profile_complete
+                ? 'Update your details to keep your profile current and access more job opportunities'
+                : 'Fill in your details to get the most out of our platform'}
             </p>
           </div>
 
@@ -457,14 +432,44 @@ const CompleteProfile = () => {
                       Degree
                     </span>
                   </label>
-                  <input
-                    type="text"
-                    name="degree"
-                    id="degree"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
-                    placeholder="B.Tech in Computer Science"
-                    value={formData.degree}
-                    onChange={handleChange}
+                  <Select
+                    options={degrees}
+                    value={degrees.find(option => option.value === formData.degree_id) || null}
+                    onChange={handleDegreeChange}
+                    placeholder="Select your degree..."
+                    className="text-sm"
+                    classNamePrefix="react-select"
+                    styles={{
+                      control: (provided) => ({
+                        ...provided,
+                        borderColor: '#e5e7eb',
+                        borderRadius: '0.375rem',
+                        padding: '2px',
+                        backgroundColor: '#fff',
+                        '&:hover': { borderColor: '#6366f1' },
+                      }),
+                      menu: (provided) => ({
+                        ...provided,
+                        backgroundColor: '#fff',
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#e0e7ff' : '#fff',
+                        color: state.isSelected ? '#fff' : '#374151',
+                      }),
+                      singleValue: (provided) => ({
+                        ...provided,
+                        color: '#374151',
+                      }),
+                    }}
+                    theme={(theme) => ({
+                      ...theme,
+                      colors: {
+                        ...theme.colors,
+                        primary: '#6366f1',
+                        primary25: '#e0e7ff',
+                      },
+                    })}
                     required
                   />
                 </div>

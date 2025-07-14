@@ -51,12 +51,16 @@ const CandidateDashboard = () => {
   const [candidate, setCandidate] = useState(null)
   const [assessments, setAssessments] = useState({
     eligible: [],
+    all: [],
     attempted: [],
   })
   const [selectedAssessment, setSelectedAssessment] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isIneligibleModalOpen, setIsIneligibleModalOpen] = useState(false)
+  const [ineligibleMessage, setIneligibleMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [activeTab, setActiveTab] = useState('recommended')
 
   useEffect(() => {
     if (!user || user.role !== 'candidate') {
@@ -88,7 +92,7 @@ const CandidateDashboard = () => {
         setErrorMessage(`Failed to load candidate profile: ${error.message}`)
       })
 
-    // Fetch eligible assessments
+    // Fetch assessments
     fetch(
       `http://localhost:5000/api/candidate/eligible-assessments/${user.id}`,
       {
@@ -99,52 +103,36 @@ const CandidateDashboard = () => {
       .then((response) => {
         if (!response.ok) {
           throw new Error(
-            `Failed to fetch eligible assessments: ${response.status} ${response.statusText}`
+            `Failed to fetch assessments: ${response.status} ${response.statusText}`
           )
         }
         return response.json()
       })
       .then((data) => {
-        setAssessments((prev) => ({
-          ...prev,
+        setAssessments({
           eligible: data.eligible_assessments || [],
-        }))
+          all: data.all_assessments || [],
+          attempted: data.attempted_assessments || [],
+        })
       })
       .catch((error) => {
-        console.error('Error fetching eligible assessments:', error)
-        setErrorMessage(`Failed to load eligible assessments: ${error.message}`)
-      })
-
-    // Fetch attempted assessments
-    fetch(`http://localhost:5000/api/assessment/all`, {
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch attempted assessments: ${response.status} ${response.statusText}`
-          )
-        }
-        return response.json()
-      })
-      .then((data) => {
-        setAssessments((prev) => ({
-          ...prev,
-          attempted: data.attempted || [],
-        }))
-      })
-      .catch((error) => {
-        console.error('Error fetching attempted assessments:', error)
-        setErrorMessage(
-          `Failed to load attempted assessments: ${error.message}`
-        )
+        console.error('Error fetching assessments:', error)
+        setErrorMessage(`Failed to load assessments: ${error.message}`)
       })
   }, [navigate, user])
 
   const handleRegisterAssessment = (assessment) => {
     setErrorMessage('')
     setSuccessMessage('')
+    setIneligibleMessage('')
+    if (!assessment.is_eligible) {
+      setIneligibleMessage(
+        `You are not eligible for this job. Required: ${assessment.experience_min}-${assessment.experience_max} years of experience, Degree: ${assessment.degree_required || 'None'}`
+      )
+      setIsIneligibleModalOpen(true)
+      return
+    }
+
     fetch('http://localhost:5000/api/candidate/register-assessment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -165,7 +153,7 @@ const CandidateDashboard = () => {
       .then((data) => {
         if (data.message) {
           setSuccessMessage(data.message)
-          // Refresh eligible assessments
+          // Refresh assessments
           fetch(
             `http://localhost:5000/api/candidate/eligible-assessments/${user.id}`,
             {
@@ -182,10 +170,11 @@ const CandidateDashboard = () => {
               return response.json()
             })
             .then((data) => {
-              setAssessments((prev) => ({
-                ...prev,
+              setAssessments({
                 eligible: data.eligible_assessments || [],
-              }))
+                all: data.all_assessments || [],
+                attempted: data.attempted_assessments || [],
+              })
             })
             .catch((error) => {
               console.error('Error refreshing assessments:', error)
@@ -314,113 +303,271 @@ const CandidateDashboard = () => {
           </div>
         ) : (
           <>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              Available Assessments
-            </h2>
-            {assessments.eligible.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {assessments.eligible.map((assessment) => (
-                  <div
-                    key={assessment.job_id}
-                    className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
-                  >
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
-                        <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                          {assessment.job_title}
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          Company: {assessment.company}
-                        </p>
-                      </div>
-                    </div>
+            <div className="mb-6">
+              <div className="flex border-b border-gray-200 dark:border-gray-700">
+                <button
+                  className={`px-4 py-2 text-sm font-medium ${
+                    activeTab === 'recommended'
+                      ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-300'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300'
+                  }`}
+                  onClick={() => setActiveTab('recommended')}
+                >
+                  Recommended Jobs
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-medium ${
+                    activeTab === 'explore'
+                      ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-300'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300'
+                  }`}
+                  onClick={() => setActiveTab('explore')}
+                >
+                  Explore Jobs
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-medium ${
+                    activeTab === 'attempted'
+                      ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-300'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300'
+                  }`}
+                  onClick={() => setActiveTab('attempted')}
+                >
+                  Attempted Assessments
+                </button>
+              </div>
+            </div>
 
-                    <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-3">
-                      <div className="flex items-center gap-2">
-                        <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span className="text-sm">
-                          {assessment.experience_min}-
-                          {assessment.experience_max} years
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>
-                          Degree: {assessment.degree_required || 'None'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>Questions: {assessment.num_questions}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>Duration: {assessment.duration} minutes</span>
-                      </div>
-                      {assessment.schedule_start && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                          <div className="inline-flex items-center rounded-md">
-                            {formatDate(assessment.schedule_start)} -{' '}
-                            {assessment.schedule_end
-                              ? formatDate(assessment.schedule_end)
-                              : 'Ongoing'}
+            {activeTab === 'recommended' && (
+              <>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  Recommended Jobs
+                </h2>
+                {assessments.eligible.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    {assessments.eligible.map((assessment) => (
+                      <div
+                        key={assessment.job_id}
+                        className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
+                      >
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
+                            <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                              {assessment.job_title}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                              Company: {assessment.company}
+                            </p>
                           </div>
                         </div>
-                      )}
-                      {assessment.skills && assessment.skills.length > 0 && (
-                        <div className="flex flex-wrap gap-2 items-center">
-                          <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                          {assessment.skills.map((skill, index) => (
-                            <span
-                              key={index}
-                              className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
-                                skill.priority
-                              )}`}
-                            >
-                              {skill.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
 
-                    <Button
-                      onClick={() => {
-                        setIsModalOpen(true)
-                        setSelectedAssessment(assessment)
-                      }}
-                      variant="primary"
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors w-full"
-                    >
-                      {assessment.is_registered
-                        ? 'Start Assessment'
-                        : 'Register'}
-                      <ArrowRight className="w-5 h-5" />
-                    </Button>
+                        <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-3">
+                          <div className="flex items-center gap-2">
+                            <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span className="text-sm">
+                              {assessment.experience_min}-
+                              {assessment.experience_max} years
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>
+                              Degree: {assessment.degree_required || 'None'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>Questions: {assessment.num_questions}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>Duration: {assessment.duration} minutes</span>
+                          </div>
+                          {assessment.schedule_start && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                              <div className="inline-flex items-center rounded-md">
+                                {formatDate(assessment.schedule_start)} -{' '}
+                                {assessment.schedule_end
+                                  ? formatDate(assessment.schedule_end)
+                                  : 'Ongoing'}
+                              </div>
+                            </div>
+                          )}
+                          {assessment.skills && assessment.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                              {assessment.skills.map((skill, index) => (
+                                <span
+                                  key={index}
+                                  className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
+                                    skill.priority
+                                  )}`}
+                                >
+                                  {skill.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <Button
+                          onClick={() => {
+                            if (assessment.is_eligible) {
+                              setIsModalOpen(true)
+                              setSelectedAssessment(assessment)
+                            } else {
+                              handleRegisterAssessment(assessment)
+                            }
+                          }}
+                          variant="primary"
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors w-full"
+                        >
+                          {assessment.is_registered
+                            ? 'Start Assessment'
+                            : 'Register'}
+                          <ArrowRight className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm text-center border border-gray-200 dark:border-gray-800 mb-8">
-                <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm">
-                  No assessments available at the moment.
-                </p>
-                <Link
-                  to="/candidate/complete-profile"
-                  className="inline-flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
-                >
-                  Update your profile for more opportunities{' '}
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Link>
-              </div>
+                ) : (
+                  <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm text-center border border-gray-200 dark:border-gray-800 mb-8">
+                    <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm">
+                      No recommended jobs available at the moment.
+                    </p>
+                    <Link
+                      to="/candidate/complete-profile"
+                      className="inline-flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
+                    >
+                      Update your profile for more opportunities{' '}
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
 
-            {assessments.attempted.length > 0 && (
+            {activeTab === 'explore' && (
+              <>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  Explore Jobs
+                </h2>
+                {assessments.all.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    {assessments.all.map((assessment) => (
+                      <div
+                        key={assessment.job_id}
+                        className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
+                      >
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
+                            <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                              {assessment.job_title}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                              Company: {assessment.company}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-3">
+                          <div className="flex items-center gap-2">
+                            <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span className="text-sm">
+                              {assessment.experience_min}-
+                              {assessment.experience_max} years
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>
+                              Degree: {assessment.degree_required || 'None'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>Questions: {assessment.num_questions}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>Duration: {assessment.duration} minutes</span>
+                          </div>
+                          {assessment.schedule_start && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                              <div className="inline-flex items-center rounded-md">
+                                {formatDate(assessment.schedule_start)} -{' '}
+                                {assessment.schedule_end
+                                  ? formatDate(assessment.schedule_end)
+                                  : 'Ongoing'}
+                              </div>
+                            </div>
+                          )}
+                          {assessment.skills && assessment.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                              {assessment.skills.map((skill, index) => (
+                                <span
+                                  key={index}
+                                  className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
+                                    skill.priority
+                                  )}`}
+                                >
+                                  {skill.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <Button
+                          onClick={() => {
+                            if (assessment.is_eligible) {
+                              setIsModalOpen(true)
+                              setSelectedAssessment(assessment)
+                            } else {
+                              handleRegisterAssessment(assessment)
+                            }
+                          }}
+                          variant="primary"
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors w-full"
+                          disabled={!assessment.is_eligible && !candidate.is_profile_complete}
+                        >
+                          {assessment.is_registered
+                            ? 'Start Assessment'
+                            : 'Register'}
+                          <ArrowRight className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm text-center border border-gray-200 dark:border-gray-800 mb-8">
+                    <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm">
+                      No jobs available at the moment.
+                    </p>
+                    <Link
+                      to="/candidate/complete-profile"
+                      className="inline-flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium text-sm"
+                    >
+                      Update your profile for more opportunities{' '}
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Link>
+                  </div>
+                )}
+              </>
+            )}
+
+            {activeTab === 'attempted' && assessments.attempted.length > 0 && (
               <>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -576,6 +723,43 @@ const CandidateDashboard = () => {
               </div>
             </div>
           )}
+        </Modal>
+
+        <Modal
+          isOpen={isIneligibleModalOpen}
+          onRequestClose={() => setIsIneligibleModalOpen(false)}
+          className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm max-w-md mx-auto mt-20 border border-gray-200 dark:border-gray-800 outline-none"
+          overlayClassName="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-75 flex justify-center items-center p-4 z-50"
+        >
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              Not Eligible
+            </h2>
+            <button
+              onClick={() => setIsIneligibleModalOpen(false)}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+            {ineligibleMessage}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Link
+              to="/candidate/complete-profile"
+              className="px-3 py-1.5 rounded-md text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 flex items-center gap-2"
+            >
+              Update Profile <ArrowRight className="w-4 h-4" />
+            </Link>
+            <button
+              onClick={() => setIsIneligibleModalOpen(false)}
+              className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
+            >
+              Close
+            </button>
+          </div>
         </Modal>
       </div>
     </div>
