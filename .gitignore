@@ -2,6 +2,11 @@ venv
 /backend/app/static
 /backend/keys
 /backend/.env
+<<<<<<< HEAD
 **/__pycache__/
-*.pyc" 
-__pycache__/" 
+=======
+**/__pycache__/
+>>>>>>> 287fff2531c07d7183449828dd6b12d0d8faa03f
+"*.pyc" 
+"__pycache__/" 
+"*.py[cod]" 
