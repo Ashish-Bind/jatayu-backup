@@ -3,3 +3,5 @@ venv
 /backend/keys
 /backend/.env
 **/__pycache__/
+*.pyc" 
+__pycache__/" 
