@@ -17,8 +17,13 @@ class Candidate(db.Model):
     profile_picture = db.Column(db.String(200))
     is_profile_complete = db.Column(db.Boolean, default=False)
     camera_image = db.Column(db.String(200))
-
+    status = db.Column(db.String(50), default='active')  # e.g., active, inactive, suspended
+    block_reason = db.Column(db.String(255), default='')  # Reason for blocking the candidate
     degree = db.relationship('Degree', backref='candidates')  # Relationship to Degree model
 
-    def __repr__(self):  # Fixed typo from _repr_ to __repr__
+
+    # Add relationship to AssessmentAttempt
+    assessment_attempts = db.relationship('AssessmentAttempt', backref='candidate', lazy='dynamic')
+
+    def __repr__(self):
         return f'<Candidate {self.name}>'

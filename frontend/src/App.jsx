@@ -7,7 +7,6 @@ import AssessmentDashboard from './pages/AssessmentDashboard'
 import AuthRoute from './components/AuthRoute'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuth } from './context/AuthContext'
-// import RecruiterDashboard from './pages/RecruiterDashboard'
 import RecruiterDashboard from './RecruiterDashboard'
 import CandidateDashboard from './CandidateDashboard'
 import CompleteProfile from './CompleteProfile'
@@ -20,6 +19,8 @@ import ResetPassword from './pages/ResetPassword'
 import CandidateConfirm from './pages/CandidateConfirm'
 import CandidateResult from './pages/CandidateResult'
 import AssessmentResults from './pages/AssessmentResults'
+import Analytics from './Analytics' // Added import for Analytics
+import CandidateProctoring from './components/CandidateProctoring'
 
 export default function App() {
   const { user } = useAuth()
@@ -82,6 +83,8 @@ export default function App() {
           path="/recruiter/combined-report/:job_id"
           element={<CombinedReport />}
         />
+        <Route path="/recruiter/analytics" element={<Analytics />} /> {/* Added Analytics route */}
+        <Route path="/recruiter/candidate/:candidateId/proctoring" element={<CandidateProctoring />} /> {/* Added for completeness */}
       </Route>
     </Routes>
   )

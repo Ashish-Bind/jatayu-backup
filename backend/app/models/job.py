@@ -19,6 +19,8 @@ class JobDescription(db.Model):
     schedule_end = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     custom_prompt = db.Column(db.Text)
+    status = db.Column(db.String(50), default='active')
+    suspension_reason=  db.Column(db.String(255), default='')# e.g., draft, active, closed
 
     # Relationships
     recruiter = db.relationship('User', backref='job_descriptions')

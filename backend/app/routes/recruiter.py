@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, session
-from app import db
+from app import db, mail
 from app.models.user import User
 from app.models.job import JobDescription
 from app.models.skill import Skill
