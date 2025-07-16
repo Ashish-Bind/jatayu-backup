@@ -21,6 +21,8 @@ const CandidateConfirm = lazy(() => import('./pages/CandidateConfirm'))
 const CandidateResult = lazy(() => import('./pages/CandidateResult'))
 const AssessmentResults = lazy(() => import('./pages/AssessmentResults'))
 const CandidateOverview = lazy(() => import('./pages/CandidateOverview'))
+const Analytics = lazy(() => import('./Analytics'))
+const CandidateProctoring = lazy(() => import('./components/CandidateProctoring'))
 
 export default function App() {
   const { user } = useAuth()
@@ -83,6 +85,8 @@ export default function App() {
             path="/recruiter/combined-report/:job_id"
             element={<CombinedReport />}
           />
+          <Route path="/recruiter/analytics" element={<Analytics />} />
+          <Route path="/recruiter/candidate/:candidateId/proctoring" element={<CandidateProctoring />} />
         </Route>
       </Routes>
     </Suspense>
