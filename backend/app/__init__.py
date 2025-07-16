@@ -43,7 +43,9 @@ def create_app():
     from app.routes.assessment import assessment_api_bp
     from app.routes.recruiter import recruiter_api_bp
     from app.routes.auth import auth_bp
+    from app.routes.recruiter_analytics import recruiter_analytics_api_bp
     
+    app.register_blueprint(recruiter_analytics_api_bp, url_prefix='/api/recruiter/analytics')
     app.register_blueprint(candidate_api_bp)
     app.register_blueprint(assessment_api_bp)
     app.register_blueprint(recruiter_api_bp)

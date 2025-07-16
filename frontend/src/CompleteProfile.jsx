@@ -15,11 +15,12 @@ import {
   X,
   Loader2,
   Camera,
+  Calendar,
 } from 'lucide-react'
 import Navbar from './components/Navbar'
 import LinkButton from './components/LinkButton'
 import Button from './components/Button'
-import Select from 'react-select' // Added for dropdown
+import Select from 'react-select'
 
 const CompleteProfile = () => {
   const { user } = useAuth()
@@ -30,11 +31,14 @@ const CompleteProfile = () => {
     location: '',
     linkedin: '',
     github: '',
-    degree_id: '', // Updated to degree_id
+    degree_id: '',
+    degree_branch: '',
+    passout_year: '',
     years_of_experience: '',
     resume: '',
   })
-  const [degrees, setDegrees] = useState([]) // State for degree options
+  const [degrees, setDegrees] = useState([])
+  const [branches, setBranches] = useState([])
   const [resume, setResume] = useState(null)
   const [profilePicture, setProfilePicture] = useState(null)
   const [profilePreview, setProfilePreview] = useState(null)
@@ -43,13 +47,17 @@ const CompleteProfile = () => {
   const [message, setMessage] = useState({ text: '', type: '' })
   const [isLoading, setIsLoading] = useState(false)
   const [isWebcamActive, setIsWebcamActive] = useState(false)
+  const [enforceFaceVerification, setEnforceFaceVerification] = useState(false)
   const navigate = useNavigate()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/candidate/profile/${user.id}`)
+    // Fetch candidate profile
+    fetch(`http://localhost:5000/api/candidate/profile/${user.id}`, {
+      credentials: 'include',
+    })
       .then((response) => {
         if (!response.ok) throw new Error('Failed to fetch profile')
         return response.json()
@@ -62,7 +70,9 @@ const CompleteProfile = () => {
           location: data.location || '',
           linkedin: data.linkedin || '',
           github: data.github || '',
-          degree_id: data.degree_id || '', // Updated to degree_id
+          degree_id: data.degree_id || '',
+          degree_branch: data.degree_branch || '',
+          passout_year: data.passout_year || '',
           years_of_experience: data.years_of_experience || '',
           resume: data.resume || '',
         })
@@ -85,8 +95,34 @@ const CompleteProfile = () => {
         })
       })
 
+      // Fetch enforce_face_verification flag
+fetch('http://localhost:5000/api/auth/check', {
+  credentials: 'include',
+})
+  .then((response) => {
+    if (!response.ok) throw new Error('Failed to check auth')
+    return response.json()
+  })
+  .then((data) => {
+    if (data.user) {
+      console.log('✅ Auth check:', {
+        enforceFaceVerification: data.user.enforce_face_verification,
+        lastLoginIP: data.user.last_login_ip, // OPTIONAL if you expose it
+        currentIP: data.user.current_ip,       // OPTIONAL if you expose it
+      });
+      if (data.user.enforce_face_verification) {
+        setEnforceFaceVerification(true)
+      }
+    }
+  })
+  .catch((error) => {
+    console.error('❌ Error checking face verification requirement:', error)
+  })
+
     // Fetch degrees
-    fetch('http://localhost:5000/api/candidate/degrees')
+    fetch('http://localhost:5000/api/candidate/degrees', {
+      credentials: 'include',
+    })
       .then((response) => {
         if (!response.ok) throw new Error('Failed to fetch degrees')
         return response.json()
@@ -101,9 +137,27 @@ const CompleteProfile = () => {
           type: 'error',
         })
       })
+
+    // Fetch branches
+    fetch('http://localhost:5000/api/candidate/branches', {
+      credentials: 'include',
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('Failed to fetch branches')
+        return response.json()
+      })
+      .then((data) => {
+        setBranches(data.map(branch => ({ value: branch.branch_id, label: branch.branch_name })))
+      })
+      .catch((error) => {
+        console.error('Error fetching branches:', error)
+        setMessage({
+          text: 'Failed to fetch branch options. Please try again.',
+          type: 'error',
+        })
+      })
   }, [user.id])
 
-  // Handle webcam stream setup
   useEffect(() => {
     if (isWebcamActive && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current
@@ -117,6 +171,10 @@ const CompleteProfile = () => {
 
   const handleDegreeChange = (selectedOption) => {
     setFormData({ ...formData, degree_id: selectedOption ? selectedOption.value : '' })
+  }
+
+  const handleBranchChange = (selectedOption) => {
+    setFormData({ ...formData, degree_branch: selectedOption ? selectedOption.value : '' })
   }
 
   const handleFileChange = (e) => {
@@ -186,57 +244,92 @@ const CompleteProfile = () => {
     setIsLoading(true)
     setMessage({ text: '', type: '' })
 
-    if (!profilePicture || !webcamImage) {
+    // Validate passout_year
+    if (formData.passout_year && !/^\d{4}$/.test(formData.passout_year)) {
       setMessage({
-        text: 'Both profile picture and webcam image are required for verification.',
+        text: 'Passout year must be a valid 4-digit year',
         type: 'error',
       })
       setIsLoading(false)
       return
     }
 
-    const data = new FormData()
-    for (const key in formData) {
-      if (key !== 'resume') {
-        data.append(key, formData[key])
-      }
-    }
-    if (resume) data.append('resume', resume)
-    if (profilePicture) data.append('profile_picture', profilePicture)
-    if (webcamImage) data.append('webcam_image', webcamImage)
+if (enforceFaceVerification && (!profilePicture || !webcamImage)) {
+  console.warn('⚠️ Face verification is required but missing images.', {
+    profilePicture: !!profilePicture,
+    webcamImage: !!webcamImage,
+  });
+  setMessage({
+    text: 'Both profile picture and webcam image are required for verification.',
+    type: 'error',
+  });
+  setIsLoading(false);
+  return;
+} else {
+  console.log('✅ Face verification check passed.', {
+    enforceFaceVerification,
+    profilePicture: !!profilePicture,
+    webcamImage: !!webcamImage,
+  });
+}
+
+
+const data = new FormData()
+for (const key in formData) {
+  if (key !== 'resume') {
+    data.append(key, formData[key])
+  }
+}
+if (resume) data.append('resume', resume)
+if (profilePicture) data.append('profile_picture', profilePicture)
+if (webcamImage) data.append('webcam_image', webcamImage)
+data.append('enforce_face_verification', enforceFaceVerification) // ✅ Add this
+
 
     try {
       const response = await fetch(
         `http://localhost:5000/api/candidate/profile/${user.id}`,
         {
           method: 'POST',
+          credentials: 'include',
           body: data,
         }
       )
+      
       const result = await response.json()
-      if (response.ok) {
-        console.log('Face Verification Result:', result.face_verification)
-        console.log(
-          `Similarity Score: ${result.face_verification.similarity}%`
-        )
-        console.log(
-          `Verification ${
-            result.face_verification.verified ? 'successful' : 'failed'
-          }`
-        )
-        setMessage({
-          text: `Profile updated successfully! Face verification: ${result.face_verification.similarity}% similarity.`,
-          type: 'success',
-        })
-        setTimeout(() => navigate('/candidate/dashboard'), 1500)
-      } else {
-        setMessage({
-          text:
-            result.error ||
-            'An error occurred while updating your profile. Please try again.',
-          type: 'error',
-        })
-      }
+if (response.ok) {
+  console.log('✅ Profile updated successfully!')
+  console.log('📸 Face Verification Result:', result.face_verification)
+  if (result.face_verification) {
+    console.log(
+      `🔍 Similarity Score: ${result.face_verification.similarity}%`
+    )
+    console.log(
+      `🎯 Verification ${result.face_verification.verified ? '✅ successful' : '❌ failed'}`
+    )
+  } else {
+    console.log('ℹ️ No face verification performed by backend.')
+  }
+
+  setMessage({
+    text: `Profile updated successfully! ${
+      result.face_verification
+        ? `Face verification: ${result.face_verification.similarity}% similarity.`
+        : ''
+    }`,
+    type: 'success',
+  })
+  setTimeout(() => navigate('/candidate/dashboard'), 1500)
+} else {
+  console.error('❌ Profile update failed:', result.error || 'Unknown error')
+  setMessage({
+    text:
+      result.error ||
+      'An error occurred while updating your profile. Please try again.',
+    type: 'error',
+  })
+}
+
     } catch (error) {
       console.error('Submission Error:', error)
       setMessage({
@@ -248,6 +341,7 @@ const CompleteProfile = () => {
       stopWebcam()
     }
   }
+  
 
   if (!candidate)
     return (
@@ -299,6 +393,11 @@ const CompleteProfile = () => {
                 ? 'Update your details to keep your profile current and access more job opportunities'
                 : 'Fill in your details to get the most out of our platform'}
             </p>
+            {enforceFaceVerification && (
+              <p className="text-sm text-red-500 font-semibold mt-2">
+                Face verification required due to location change.
+              </p>
+            )}
           </div>
 
           {message.text && (
@@ -424,7 +523,7 @@ const CompleteProfile = () => {
                 </div>
                 <div>
                   <label
-                    htmlFor="degree"
+                    htmlFor="degree_id"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
@@ -471,6 +570,78 @@ const CompleteProfile = () => {
                       },
                     })}
                     required
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="degree_branch"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                  >
+                    <span className="flex items-center">
+                      <GraduationCap className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
+                      Branch/Specialization
+                    </span>
+                  </label>
+                  <Select
+                    options={branches}
+                    value={branches.find(option => option.value === formData.degree_branch) || null}
+                    onChange={handleBranchChange}
+                    placeholder="Select your branch..."
+                    className="text-sm"
+                    classNamePrefix="react-select"
+                    styles={{
+                      control: (provided) => ({
+                        ...provided,
+                        borderColor: '#e5e7eb',
+                        borderRadius: '0.375rem',
+                        padding: '2px',
+                        backgroundColor: '#fff',
+                        '&:hover': { borderColor: '#6366f1' },
+                      }),
+                      menu: (provided) => ({
+                        ...provided,
+                        backgroundColor: '#fff',
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#e0e7ff' : '#fff',
+                        color: state.isSelected ? '#fff' : '#374151',
+                      }),
+                      singleValue: (provided) => ({
+                        ...provided,
+                        color: '#374151',
+                      }),
+                    }}
+                    theme={(theme) => ({
+                      ...theme,
+                      colors: {
+                        ...theme.colors,
+                        primary: '#6366f1',
+                        primary25: '#e0e7ff',
+                      },
+                    })}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="passout_year"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                  >
+                    <span className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
+                      Passout Year
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    name="passout_year"
+                    id="passout_year"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    placeholder="2023"
+                    value={formData.passout_year}
+                    onChange={handleChange}
+                    min="1900"
+                    max={new Date().getFullYear() + 5}
                   />
                 </div>
                 <div>

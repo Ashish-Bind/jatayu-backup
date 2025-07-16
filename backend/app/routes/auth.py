@@ -3,10 +3,11 @@ from app import db, mail, limiter
 from app.models.user import User, PasswordResetToken
 from app.models.candidate import Candidate
 from app.models.recruiter import Recruiter
+from app.models.login_log import LoginLog
 from app.config import Config
 from flask_mail import Message
-from flask_limiter import Limiter
 from datetime import datetime, timedelta
+from geopy.distance import geodesic
 
 import os
 import secrets
@@ -14,6 +15,8 @@ import requests
 
 auth_bp = Blueprint('auth', __name__)
 
+
+# Email verification helper
 def verify_email(email, api_key=os.getenv('EMAILABLE_API_KEY')):
     url = f'https://api.emailable.com/v1/verify?email={email}&api_key={api_key}'
     try:
@@ -26,19 +29,20 @@ def verify_email(email, api_key=os.getenv('EMAILABLE_API_KEY')):
     except requests.RequestException as e:
         return False, f'Email verification failed: {str(e)}'
 
+
+# Signup route
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.json
-    print(data)
 
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'User already exists'}), 400
-    
+
     is_valid, reason = verify_email(data['email'])
     if not is_valid:
         return jsonify({'error': reason or 'Invalid email address.'}), 400
 
-    role = data.get('role', 'candidate')  # default to candidate
+    role = data.get('role', 'candidate')
 
     user = User(
         name=data['name'],
@@ -50,7 +54,7 @@ def signup():
     db.session.add(user)
     db.session.commit()
 
-    # Send confirmation email
+    # Generate confirmation token
     token = secrets.token_urlsafe(32)
     confirmation_url = f'http://localhost:5173/candidate/confirm?token={token}'
     confirmation_token = PasswordResetToken(
@@ -62,7 +66,6 @@ def signup():
     db.session.add(confirmation_token)
     db.session.commit()
 
-    print(confirmation_url)
     msg = Message(
         subject='Confirm Your Account',
         sender=os.getenv('MAIL_DEFAULT_SENDER'),
@@ -71,16 +74,15 @@ def signup():
     )
     mail.send(msg)
 
-    # Now add to Candidate or Recruiter table
+    # Add user to Candidate or Recruiter table
     if role == 'candidate':
         candidate = Candidate(
             user_id=user.id,
             name=user.name,
             email=user.email,
-            years_of_experience=0.0  # Default value; can be updated later
+            years_of_experience=0.0
         )
         db.session.add(candidate)
-
     elif role == 'recruiter':
         recruiter = Recruiter(
             user_id=user.id,
@@ -90,49 +92,128 @@ def signup():
         db.session.add(recruiter)
 
     db.session.commit()
-
     return jsonify({'message': f'{role.capitalize()} signup successful'}), 200
 
+
+# Login route
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit("10/minute")
 def login():
     data = request.json
     user = User.query.filter_by(email=data['email']).first()
 
+    if not user:
+        return jsonify({'error': 'Invalid credentials'}), 401
+
     if not user.is_active:
         return jsonify({'error': 'Please confirm your email before logging in.'}), 403
-        
-    if user and user.check_password(data['password']):
-        session['user_id'] = user.id
-        session['role'] = user.role
-        return jsonify({'message': 'Login successful', 'role': user.role})
-    return jsonify({'error': 'Invalid credentials'}), 401
 
+    if not user.check_password(data['password']):
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    # Save user session
+    session['user_id'] = user.id
+    session['role'] = user.role
+
+    # Save login log
+    location = data.get('location', {})
+    current_ip = request.remote_addr
+    print(f"📡 Received location: {location}")
+    print(f"📡 Current IP address: {current_ip}")
+
+    try:
+        login_log = LoginLog(
+            user_id=user.id,
+            ip_address=current_ip,
+            city=location.get('city', ''),
+            region=location.get('region', ''),
+            country=location.get('country', ''),
+            latitude=location.get('latitude'),
+            longitude=location.get('longitude'),
+            login_time=datetime.utcnow()
+        )
+        db.session.add(login_log)
+        db.session.commit()
+        print(f"✅ Login log saved for user_id={user.id}")
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error saving login log: {e}")
+
+    # Check last login
+    enforce_face_verification = False
+    last_log = (
+        LoginLog.query
+        .filter(LoginLog.user_id == user.id)
+        .order_by(LoginLog.login_time.desc())
+        .offset(1)
+        .first()
+    )
+    print(f"📖 Last login found: log_id={last_log.log_id if last_log else None}, IP={last_log.ip_address if last_log else None}, Lat={last_log.latitude if last_log else None}, Lon={last_log.longitude if last_log else None}")
+
+    if (
+        last_log and
+        last_log.latitude is not None and last_log.longitude is not None and
+        location.get('latitude') is not None and location.get('longitude') is not None
+    ):
+        prev_coords = (last_log.latitude, last_log.longitude)
+        current_coords = (location['latitude'], location['longitude'])
+        try:
+            distance_km = geodesic(prev_coords, current_coords).km
+            print(f"📏 Distance from last login: {distance_km:.2f} km")
+            if distance_km > 100:
+                enforce_face_verification = True
+                print("⚠️ Location changed significantly (>100km). Enforcing face verification.")
+        except Exception as e:
+            print(f"❌ Error calculating distance: {e}")
+            enforce_face_verification = True
+    elif last_log and last_log.ip_address != current_ip:
+        print(f"⚠️ IP changed: {last_log.ip_address} -> {current_ip}. Enforcing face verification.")
+        enforce_face_verification = True
+    else:
+        print("✅ No significant location/IP change detected.")
+
+    # Save enforce flag in session
+    session['enforce_face_verification'] = enforce_face_verification
+
+    return jsonify({
+        'message': 'Login successful',
+        'role': user.role,
+        'enforce_face_verification': enforce_face_verification
+    }), 200
+
+
+# Auth check route
 @auth_bp.route('/check')
 def check_auth():
     if 'user_id' in session:
         user = User.query.get(session['user_id'])
         candidate = Candidate.query.filter_by(user_id=user.id).first()
-        if user:
-            response = {
-                'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    'role': user.role,
-                    'name': user.name,
-                    'profile_img': candidate.profile_picture if user.role == 'candidate' and candidate else ''
-                }
+        enforce_face_verification = session.get('enforce_face_verification', False)
+
+        response = {
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'role': user.role,
+                'name': user.name,
+                'profile_img': candidate.profile_picture if user.role == 'candidate' and candidate else '',
+                'enforce_face_verification': enforce_face_verification
             }
-            if candidate:
-                response['user'].update({
-                    'candidate_id': candidate.candidate_id,
-                    'degree_id': candidate.degree_id,
-                    'degree_name': candidate.degree.degree_name if candidate.degree else None,
-                    'years_of_experience': candidate.years_of_experience,
-                    'is_profile_complete': candidate.is_profile_complete
-                })
-            return jsonify(response)
+        }
+        if candidate:
+            response['user'].update({
+                'candidate_id': candidate.candidate_id,
+                'degree_id': candidate.degree_id,
+                'degree_name': candidate.degree.degree_name if candidate.degree else None,
+                'years_of_experience': candidate.years_of_experience,
+                'is_profile_complete': candidate.is_profile_complete
+            })
+        print(f"✅ Auth check: {response['user']}")
+        return jsonify(response)
     return jsonify({'error': 'Not authenticated'}), 401
 
+
+# Forgot password
 @auth_bp.route('/forgot-password', methods=['POST'])
 @limiter.limit("5/hour")
 def forgot_password():
@@ -141,14 +222,11 @@ def forgot_password():
     user = User.query.filter_by(email=email).first()
 
     if not user:
-        # Don't reveal if email exists for security
         return jsonify({'message': 'If an account exists for this email, a reset link has been sent.'}), 200
 
-    # Generate a secure token
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+    expires_at = datetime.utcnow() + timedelta(hours=1)
 
-    # Store token in database
     reset_token = PasswordResetToken(
         user_id=user.id,
         token=token,
@@ -157,8 +235,7 @@ def forgot_password():
     db.session.add(reset_token)
     db.session.commit()
 
-    # Send reset email
-    reset_url = f"http://localhost:5173/candidate/reset-password?token={token}"  # Update with your frontend URL
+    reset_url = f"http://localhost:5173/candidate/reset-password?token={token}"
     msg = Message(
         subject="Password Reset Request",
         recipients=[user.email],
@@ -176,13 +253,15 @@ def forgot_password():
     )
     try:
         mail.send(msg)
-        print(reset_url)
+        print(f"📧 Password reset link sent to {user.email}")
         return jsonify({'message': 'If an account exists for this email, a reset link has been sent.'}), 200
     except Exception as e:
-        db.session.delete(reset_token)  # Roll back token if email fails
+        db.session.delete(reset_token)
         db.session.commit()
         return jsonify({'error': 'Failed to send reset email'}), 500
 
+
+# Reset password
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.json
@@ -206,12 +285,13 @@ def reset_password():
 
     user.set_password(new_password)
 
-    # Delete the used token
     db.session.delete(reset_token)
     db.session.commit()
 
     return jsonify({'message': 'Password reset successfully'}), 200
 
+
+# Confirm email
 @auth_bp.route('/confirm', methods=['POST'])
 def confirm_email():
     data = request.json
@@ -230,14 +310,16 @@ def confirm_email():
     if not user:
         return jsonify({'error': 'User not found.'}), 404
 
-    # Activate user (e.g., set is_active=True if you add this column)
-    user.is_active = True  # Add is_active column to User model
+    user.is_active = True
     db.session.delete(confirmation_token)
     db.session.commit()
 
     return jsonify({'message': 'Email confirmed successfully. You can now log in.'}), 200
 
+
+# Logout route
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     session.clear()
+    print("✅ User logged out and session cleared")
     return jsonify({'message': 'Logged out successfully'})

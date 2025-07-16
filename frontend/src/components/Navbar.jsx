@@ -14,6 +14,7 @@ import {
   FileText,
   Sun,
   Moon,
+  BarChart2,
 } from 'lucide-react'
 import LinkButton from './LinkButton'
 import Button from './Button'
@@ -52,6 +53,11 @@ const Navbar = ({
       action: scrollToTestimonials,
       show: pathname === '/',
     },
+    {
+      name: 'Analytics',
+      to: '/recruiter/analytics',
+      show: user && user.role === 'recruiter' && pathname.startsWith('/recruiter'),
+    },
   ]
 
   return (
@@ -72,14 +78,25 @@ const Navbar = ({
           <div className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) =>
               link.show ? (
-                <LinkButton
-                  key={link.name}
-                  variant="link"
-                  onClick={link.action}
-                  className="text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
-                >
-                  {link.name}
-                </LinkButton>
+                link.to ? (
+                  <LinkButton
+                    key={link.name}
+                    to={link.to}
+                    variant="link"
+                    className="text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
+                  >
+                    {link.name}
+                  </LinkButton>
+                ) : (
+                  <LinkButton
+                    key={link.name}
+                    variant="link"
+                    onClick={link.action}
+                    className="text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
+                  >
+                    {link.name}
+                  </LinkButton>
+                )
               ) : null
             )}
             <button
@@ -194,17 +211,29 @@ const Navbar = ({
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map((link) =>
               link.show ? (
-                <LinkButton
-                  key={link.name}
-                  variant="link"
-                  onClick={() => {
-                    link.action()
-                    setIsMenuOpen(false)
-                  }}
-                  className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 font-medium"
-                >
-                  {link.name}
-                </LinkButton>
+                link.to ? (
+                  <LinkButton
+                    key={link.name}
+                    to={link.to}
+                    variant="link"
+                    className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {link.name}
+                  </LinkButton>
+                ) : (
+                  <LinkButton
+                    key={link.name}
+                    variant="link"
+                    onClick={() => {
+                      link.action()
+                      setIsMenuOpen(false)
+                    }}
+                    className="block px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-600/30 font-medium"
+                  >
+                    {link.name}
+                  </LinkButton>
+                )
               ) : null
             )}
             <button

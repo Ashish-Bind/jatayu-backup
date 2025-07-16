@@ -13,9 +13,11 @@ from app.models.skill import Skill
 from app.models.candidate_skill import CandidateSkill
 from app.models.assessment_state import AssessmentState
 from app.models.degree import Degree
+from app.models.degree_branch import DegreeBranch
 from app.models.resume_json import ResumeJson
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
+import pytz
 import google.generativeai as genai
 import logging
 from io import BytesIO
@@ -158,7 +160,7 @@ def calculate_total_experience(work_experience):
         return 0.0
 
     intervals = []
-    current_date = datetime(2025, 7, 13)
+    current_date = datetime.now(timezone.utc)
 
     for exp in work_experience:
         start_date_str = exp.get('Start Date', '')
@@ -169,14 +171,14 @@ def calculate_total_experience(work_experience):
                 end_date = current_date
             else:
                 if len(end_date_str) == 4:
-                    end_date = datetime(int(end_date_str), 12, 31)
+                    end_date = datetime(int(end_date_str), 12, 31, tzinfo=timezone.utc)
                 else:
-                    end_date = datetime.strptime(end_date_str, '%Y-%m')
+                    end_date = datetime.strptime(end_date_str, '%Y-%m').replace(tzinfo=timezone.utc)
 
             if len(start_date_str) == 4:
-                start_date = datetime(int(start_date_str), 1, 1)
+                start_date = datetime(int(start_date_str), 1, 1, tzinfo=timezone.utc)
             else:
-                start_date = datetime.strptime(start_date_str, '%Y-%m')
+                start_date = datetime.strptime(start_date_str, '%Y-%m').replace(tzinfo=timezone.utc)
 
             if start_date > end_date:
                 continue
@@ -272,8 +274,8 @@ def infer_proficiency(skill, work_experience, education, projects):
 def verify_faces(profile_pic_file, webcam_image_file):
     """Verify if the faces in the two images match with at least 70% similarity."""
     try:
-        profile_pic_path = f"app/static/uploads/temp_profile_{datetime.now().timestamp()}.jpg"
-        webcam_image_path = f"app/static/uploads/temp_webcam_{datetime.now().timestamp()}.jpg"
+        profile_pic_path = f"app/static/uploads/temp_profile_{datetime.now(timezone.utc).timestamp()}.jpg"
+        webcam_image_path = f"app/static/uploads/temp_webcam_{datetime.now(timezone.utc).timestamp()}.jpg"
 
         profile_pic_file.save(profile_pic_path)
         webcam_image_file.save(webcam_image_path)
@@ -314,6 +316,8 @@ def get_profile_by_user(user_id):
         'linkedin': candidate.linkedin,
         'github': candidate.github,
         'degree_id': candidate.degree_id,
+        'degree_branch': candidate.degree_branch,
+        'passout_year': candidate.passout_year,
         'years_of_experience': candidate.years_of_experience,
         'resume': candidate.resume,
         'profile_picture': candidate.profile_picture,
@@ -330,6 +334,15 @@ def get_degrees():
         for degree in degrees
     ])
 
+@candidate_api_bp.route('/branches', methods=['GET'])
+def get_branches():
+    """Retrieve the list of available degree branches."""
+    branches = DegreeBranch.query.all()
+    return jsonify([
+        {'branch_id': branch.branch_id, 'branch_name': branch.branch_name}
+        for branch in branches
+    ])
+
 @candidate_api_bp.route('/profile/<int:user_id>', methods=['POST'])
 def update_profile(user_id):
     candidate = Candidate.query.filter_by(user_id=user_id).first_or_404()
@@ -341,37 +354,56 @@ def update_profile(user_id):
     form_linkedin = request.form.get('linkedin')
     form_github = request.form.get('github')
     form_degree_id = request.form.get('degree_id')
+    form_degree_branch = request.form.get('degree_branch')
+    form_passout_year = request.form.get('passout_year')
     resume_file = request.files.get('resume')
     profile_pic_file = request.files.get('profile_picture')
     webcam_image_file = request.files.get('webcam_image')
+
+    # ✅ Get enforce_face_verification flag from frontend
+    enforce_face_verification = request.form.get('enforce_face_verification', 'false') == 'true'
+    logger.debug(f"📸 Enforce Face Verification: {enforce_face_verification}")
 
     if not form_name or not form_experience or not form_degree_id:
         return jsonify({'error': 'Name, years of experience, and degree are required.'}), 400
     try:
         form_experience = float(form_experience)
         form_degree_id = int(form_degree_id)
+        form_degree_branch = int(form_degree_branch) if form_degree_branch else None
+        form_passout_year = int(form_passout_year) if form_passout_year else None
+        current_year = datetime.now(timezone.utc).year
+        if form_passout_year and not (1900 <= form_passout_year <= current_year + 5):
+            return jsonify({'error': f'Passout year must be between 1900 and {current_year + 5}.'}), 400
     except ValueError:
-        return jsonify({'error': 'Years of experience must be a number and degree_id must be valid.'}), 400
+        return jsonify({'error': 'Years of experience must be a number, and degree_id/degree_branch/passout_year must be valid.'}), 400
 
-    # Validate degree_id exists
+    # Validate degree_id and degree_branch
     if not Degree.query.get(form_degree_id):
         return jsonify({'error': 'Invalid degree selected.'}), 400
+    if form_degree_branch and not DegreeBranch.query.get(form_degree_branch):
+        return jsonify({'error': 'Invalid degree branch selected.'}), 400
 
     try:
-        # Validate face verification (mandatory for every update)
         face_verification_result = None
-        if profile_pic_file and webcam_image_file:
-            face_verification_result = verify_faces(profile_pic_file, webcam_image_file)
-            if not face_verification_result['verified']:
-                return jsonify({
-                    'error': f'Face verification failed: Images do not match with 70% similarity ({face_verification_result["similarity"]}% similarity).'
-                }), 400
-            profile_pic_file.seek(0)
-            webcam_image_file.seek(0)
-        else:
-            return jsonify({'error': 'Both profile picture and webcam image are required for verification.'}), 400
 
-        # Validate and process resume if provided
+        if enforce_face_verification:
+            logger.debug(f"✅ Face verification enforced by backend.")
+            if profile_pic_file and webcam_image_file:
+                face_verification_result = verify_faces(profile_pic_file, webcam_image_file)
+                logger.debug(f"✅ Face verification result: {face_verification_result}")
+                if not face_verification_result['verified']:
+                    return jsonify({
+                        'error': f'Face verification failed: Images do not match with 70% similarity ({face_verification_result["similarity"]}% similarity).'
+                    }), 400
+                profile_pic_file.seek(0)
+                webcam_image_file.seek(0)
+            else:
+                logger.debug(f"❌ Missing profile picture or webcam image for verification.")
+                return jsonify({'error': 'Both profile picture and webcam image are required for verification.'}), 400
+        else:
+            logger.debug(f"✅ Face verification skipped as enforce_face_verification = False.")
+
+        # ✅ Validate and process resume if provided
         parsed_data = None
         if resume_file:
             resume_text = extract_text_from_pdf(resume_file)
@@ -416,13 +448,15 @@ def update_profile(user_id):
                         'error': f'Resume experience ({resume_experience:.2f} years) does not match form input ({form_experience:.2f} years). It should be at least 80% of the stated experience.'
                     }), 400
 
-        # All validations passed, now update candidate and save files
+        # ✅ All validations passed, now update candidate and save files
         candidate.name = form_name
         candidate.phone = normalize_phone_number(form_phone)
         candidate.location = form_location
         candidate.linkedin = form_linkedin
         candidate.github = form_github
         candidate.degree_id = form_degree_id
+        candidate.degree_branch = form_degree_branch
+        candidate.passout_year = form_passout_year
         candidate.years_of_experience = form_experience
 
         if resume_file:
@@ -487,6 +521,7 @@ def update_profile(user_id):
         db.session.add(candidate)
         db.session.commit()
 
+        logger.debug(f"✅ Profile updated successfully for candidate_id={candidate.candidate_id}")
         return jsonify({
             'message': 'Profile updated successfully',
             'face_verification': face_verification_result
@@ -501,24 +536,28 @@ def update_profile(user_id):
         elif 'github' in str(e):
             return jsonify({'error': 'This GitHub profile is already in use.'}), 400
         else:
-            return jsonify({'error': 'An error occurred while updating your project.'}), 400
+            return jsonify({'error': 'An error occurred while updating your profile.'}), 400
     except ValueError as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
+        logger.error(f"❌ Unexpected error: {str(e)}")
         return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
+
 
 @candidate_api_bp.route('/eligible-assessments/<int:user_id>', methods=['GET'])
 def get_eligible_assessments(user_id):
     """Retrieve eligible and all assessments for a candidate."""
     candidate = Candidate.query.filter_by(user_id=user_id).first_or_404()
 
-    # Current date and time in IST (UTC+5:30)
-    current_time = datetime.now(timezone.utc).astimezone(timezone(offset=timedelta(hours=5, minutes=30)))
+    # Current date and time in UTC
+    current_time = datetime.now(pytz.UTC)
 
     assessments = JobDescription.query.options(
-        joinedload(JobDescription.required_skills).joinedload(RequiredSkill.skill)
+        joinedload(JobDescription.required_skills).joinedload(RequiredSkill.skill),
+        joinedload(JobDescription.degree),
+        joinedload(JobDescription.branch)
     ).all()
     eligible_assessments = []
     all_assessments = []
@@ -531,9 +570,13 @@ def get_eligible_assessments(user_id):
             attempted_assessments.add(attempt.job_id)
 
     for assessment in assessments:
-        # Convert schedule_start to offset-aware datetime with IST
-        schedule_start = assessment.schedule_start.replace(tzinfo=timezone(offset=timedelta(hours=5, minutes=30))) if assessment.schedule_start else None
-        schedule_end = assessment.schedule_end.replace(tzinfo=timezone(offset=timedelta(hours=5, minutes=30))) if assessment.schedule_end else None
+        # Convert schedule_start and schedule_end to offset-aware datetime with UTC
+        schedule_start = assessment.schedule_start
+        if schedule_start and schedule_start.tzinfo is None:
+            schedule_start = schedule_start.replace(tzinfo=pytz.UTC)
+        schedule_end = assessment.schedule_end
+        if schedule_end and schedule_end.tzinfo is None:
+            schedule_end = schedule_end.replace(tzinfo=pytz.UTC)
 
         # Skip if past schedule_end and no attempt exists
         if schedule_end and current_time > schedule_end:
@@ -548,12 +591,19 @@ def get_eligible_assessments(user_id):
         experience_match = (
             assessment.experience_min <= candidate.years_of_experience <= assessment.experience_max
         )
-        degree_match = False
-        if assessment.degree_required and candidate.degree:
-            degree = candidate.degree.degree_name if candidate.degree else None
-            degree_match = degree and assessment.degree_required.lower() == degree.lower()
-        elif not assessment.degree_required:
-            degree_match = True
+        degree_match = (
+            not assessment.degree_required or
+            (candidate.degree_id and assessment.degree_required == candidate.degree_id)
+        )
+        branch_match = (
+            not assessment.degree_branch or
+            (candidate.degree_branch and assessment.degree_branch == candidate.degree_branch)
+        )
+        passout_year_match = (
+            not assessment.passout_year_required or
+            not assessment.passout_year or
+            (candidate.passout_year and assessment.passout_year == candidate.passout_year)
+        )
 
         assessment_data = {
             'job_id': assessment.job_id,
@@ -561,9 +611,12 @@ def get_eligible_assessments(user_id):
             'company': assessment.company,
             'experience_min': assessment.experience_min,
             'experience_max': assessment.experience_max,
-            'degree_required': assessment.degree_required,
-            'schedule_start': assessment.schedule_start.isoformat() if assessment.schedule_start else None,
-            'schedule_end': assessment.schedule_end.isoformat() if assessment.schedule_end else None,
+            'degree_required': assessment.degree.degree_name if assessment.degree else None,
+            'degree_branch': assessment.branch.branch_name if assessment.branch else None,
+            'passout_year': assessment.passout_year,
+            'passout_year_required': assessment.passout_year_required,
+            'schedule_start': schedule_start.isoformat() if schedule_start else None,
+            'schedule_end': schedule_end.isoformat() if schedule_end else None,
             'duration': assessment.duration,
             'num_questions': assessment.num_questions,
             'job_description': assessment.job_description if hasattr(assessment, 'job_description') else None,
@@ -575,7 +628,7 @@ def get_eligible_assessments(user_id):
                 {'name': rs.skill.name, 'priority': rs.priority}
                 for rs in assessment.required_skills
             ],
-            'is_eligible': experience_match and degree_match and assessment.job_id not in attempted_assessments
+            'is_eligible': experience_match and degree_match and branch_match and passout_year_match and assessment.job_id not in attempted_assessments
         }
 
         all_assessments.append(assessment_data)
@@ -621,19 +674,29 @@ def register_assessment():
     experience_match = (
         job.experience_min <= candidate.years_of_experience <= job.experience_max
     )
-    degree_match = False
-    if job.degree_required and candidate.degree:
-        degree_match = job.degree_required.lower() == candidate.degree.degree_name.lower()
-    elif not job.degree_required:
-        degree_match = True
+    degree_match = (
+        not job.degree_required or
+        (candidate.degree_id and job.degree_required == candidate.degree_id)
+    )
+    branch_match = (
+        not job.degree_branch or
+        (candidate.degree_branch and job.degree_branch == candidate.degree_branch)
+    )
+    passout_year_match = (
+        not job.passout_year_required or
+        not job.passout_year or
+        (candidate.passout_year and job.passout_year == candidate.passout_year)
+    )
 
-    if not (experience_match and degree_match):
+    if not (experience_match and degree_match and branch_match and passout_year_match):
         return jsonify({
             'error': 'You are not eligible for this job. Please update your profile to meet the requirements.',
             'requirements': {
                 'experience_min': job.experience_min,
                 'experience_max': job.experience_max,
-                'degree_required': job.degree_required
+                'degree_required': job.degree.degree_name if job.degree else None,
+                'degree_branch': job.branch.branch_name if job.branch else None,
+                'passout_year': job.passout_year if job.passout_year_required else None
             }
         }), 403
 
@@ -647,7 +710,7 @@ def register_assessment():
     registration = AssessmentRegistration(
         candidate_id=candidate.candidate_id,
         job_id=job_id,
-        registration_date=datetime.utcnow()
+        registration_date=datetime.now(timezone.utc)
     )
     db.session.add(registration)
     try:
@@ -684,14 +747,18 @@ def start_assessment():
 
     # Check schedule
     job = JobDescription.query.get_or_404(job_id)
-    current_time = datetime.now(timezone.utc).astimezone(timezone(offset=timedelta(hours=5, minutes=30)))
-    schedule_start = job.schedule_start.replace(tzinfo=timezone(offset=timedelta(hours=5, minutes=30))) if job.schedule_start else None
-    schedule_end = job.schedule_end.replace(tzinfo=timezone(offset=timedelta(hours=5, minutes=30))) if job.schedule_end else None
+    current_time = datetime.now(timezone.utc)
+    schedule_start = job.schedule_start
+    if schedule_start and schedule_start.tzinfo is None:
+        schedule_start = schedule_start.replace(tzinfo=pytz.UTC)
+    schedule_end = job.schedule_end
+    if schedule_end and schedule_end.tzinfo is None:
+        schedule_end = schedule_end.replace(tzinfo=pytz.UTC)
 
     if schedule_start and current_time < schedule_start:
-        return jsonify({'error': f'Assessment not yet started. Scheduled for {schedule_start}'}), 403
+        return jsonify({'error': f'Assessment not yet started. Scheduled for {schedule_start.isoformat()}'}), 403
     if schedule_end and current_time > schedule_end:
-        return jsonify({'error': f'Assessment period has ended. Ended at {schedule_end}'}), 403
+        return jsonify({'error': f'Assessment period has ended. Ended at {schedule_end.isoformat()}'}), 403
 
     # Check for existing attempt
     existing_attempt = AssessmentAttempt.query.filter_by(
@@ -705,7 +772,7 @@ def start_assessment():
     attempt = AssessmentAttempt(
         candidate_id=candidate_id,
         job_id=job_id,
-        start_time=datetime.utcnow(),
+        start_time=datetime.now(timezone.utc),
         status='started'
     )
     db.session.add(attempt)

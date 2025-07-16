@@ -15,11 +15,13 @@ import {
   Award,
   Code,
   User,
+  GraduationCap,
 } from 'lucide-react'
 import Button from './components/Button'
 import { format } from 'date-fns'
 import LinkButton from './components/LinkButton'
 import FormInput from './components/FormInput'
+import Select from 'react-select'
 
 const formatDate = (date) => {
   return format(new Date(date), 'MMM d, yyyy')
@@ -28,27 +30,15 @@ const formatDate = (date) => {
 const getPriorityColor = (priority) => {
   switch (priority) {
     case 5:
-      return 'bg-green-300 text-green-800 dark:bg-green-900 dark:text-green-200' // Low priority
+      return 'bg-green-300 text-green-800 dark:bg-green-900 dark:text-green-200'
     case 3:
-      return 'bg-blue-300 text-blue-800 dark:bg-blue-900 dark:text-blue-200' // Medium priority
+      return 'bg-blue-300 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
     case 2:
-      return 'bg-yellow-300 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' // High priority
+      return 'bg-yellow-300 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
     default:
       return 'bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
   }
 }
-
-const degreeOptions = [
-  { label: 'Bachelor of Technology (B.Tech)', value: 'B.Tech' },
-  { label: 'Bachelor of Science (B.Sc)', value: 'B.Sc' },
-  { label: 'Bachelor of Engineering (B.E)', value: 'B.E' },
-  { label: 'Master of Technology (M.Tech)', value: 'M.Tech' },
-  { label: 'Master of Science (M.Sc)', value: 'M.Sc' },
-  { label: 'Master of Business Administration (MBA)', value: 'MBA' },
-  { label: 'Bachelor of Arts (B.A)', value: 'B.A' },
-  { label: 'Master of Arts (M.A)', value: 'M.A' },
-  { label: 'Doctor of Philosophy (Ph.D)', value: 'Ph.D' },
-]
 
 const RecruiterDashboard = () => {
   const { user } = useAuth()
@@ -57,6 +47,8 @@ const RecruiterDashboard = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [degrees, setDegrees] = useState([])
+  const [branches, setBranches] = useState([])
   const [formData, setFormData] = useState({
     job_title: '',
     company: '',
@@ -67,10 +59,12 @@ const RecruiterDashboard = () => {
     schedule_start: '',
     schedule_end: '',
     degree_required: '',
+    degree_branch: '',
+    passout_year: '',
+    passout_year_required: false,
     job_description: '',
     custom_prompt: '',
     skills: [],
-    degree_branch: '',
   })
   const [newSkill, setNewSkill] = useState({ name: '', priority: 'low' })
 
@@ -80,6 +74,7 @@ const RecruiterDashboard = () => {
       return
     }
 
+    // Fetch assessments
     fetch('http://localhost:5000/api/recruiter/assessments', {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -97,11 +92,50 @@ const RecruiterDashboard = () => {
         console.error('Error fetching assessments:', error)
         setError(`Failed to load assessments: ${error.message}`)
       })
+
+    // Fetch degrees
+    fetch('http://localhost:5000/api/recruiter/degrees')
+      .then((response) => {
+        if (!response.ok) throw new Error('Failed to fetch degrees')
+        return response.json()
+      })
+      .then((data) => {
+        setDegrees(data.map(degree => ({ value: degree.degree_id, label: degree.degree_name })))
+      })
+      .catch((error) => {
+        console.error('Error fetching degrees:', error)
+        setError('Failed to fetch degree options. Please try again.')
+      })
+
+    // Fetch branches
+    fetch('http://localhost:5000/api/recruiter/branches')
+      .then((response) => {
+        if (!response.ok) throw new Error('Failed to fetch branches')
+        return response.json()
+      })
+      .then((data) => {
+        setBranches(data.map(branch => ({ value: branch.branch_id, label: branch.branch_name })))
+      })
+      .catch((error) => {
+        console.error('Error fetching branches:', error)
+        setError('Failed to fetch branch options. Please try again.')
+      })
   }, [user, navigate])
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
+    const { name, value, type, checked } = e.target
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value,
+    })
+  }
+
+  const handleDegreeChange = (selectedOption) => {
+    setFormData({ ...formData, degree_required: selectedOption ? selectedOption.value : '' })
+  }
+
+  const handleBranchChange = (selectedOption) => {
+    setFormData({ ...formData, degree_branch: selectedOption ? selectedOption.value : '' })
   }
 
   const handleSkillChange = (e) => {
@@ -137,6 +171,13 @@ const RecruiterDashboard = () => {
     setError('')
     setSuccess('')
 
+    // Validate required fields
+    const requiredFields = ['job_title', 'company', 'experience_min', 'experience_max', 'duration', 'num_questions', 'schedule_start', 'schedule_end']
+    if (requiredFields.some(field => !formData[field])) {
+      setError('Please fill in all required fields')
+      return
+    }
+
     // Validate skills
     if (formData.skills.length === 0) {
       setError('At least one skill is required')
@@ -151,6 +192,12 @@ const RecruiterDashboard = () => {
         setError('End date must be after start date')
         return
       }
+    }
+
+    // Validate passout_year
+    if (formData.passout_year && !/^\d{4}$/.test(formData.passout_year)) {
+      setError('Passout year must be a valid 4-digit year')
+      return
     }
 
     try {
@@ -178,10 +225,12 @@ const RecruiterDashboard = () => {
           schedule_start: '',
           schedule_end: '',
           degree_required: '',
-          description: '',
+          degree_branch: '',
+          passout_year: '',
+          passout_year_required: false,
+          job_description: '',
           custom_prompt: '',
           skills: [],
-          degree_branch: '',
         })
         setNewSkill({ name: '', priority: 'low' })
         setIsFormOpen(false)
@@ -326,7 +375,7 @@ const RecruiterDashboard = () => {
                       : ''
                   }
                   onChange={(e) => {
-                    const date = new Date(e.target.value)
+                    const date = new Date(e.target.value + 'Z')
                     setFormData({
                       ...formData,
                       schedule_start: date.toISOString(),
@@ -345,7 +394,7 @@ const RecruiterDashboard = () => {
                       : ''
                   }
                   onChange={(e) => {
-                    const date = new Date(e.target.value)
+                    const date = new Date(e.target.value + 'Z')
                     setFormData({
                       ...formData,
                       schedule_end: date.toISOString(),
@@ -353,25 +402,127 @@ const RecruiterDashboard = () => {
                   }}
                   required
                 />
+                <div>
+                  <label
+                    htmlFor="degree_required"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                  >
+                    Degree
+                  </label>
+                  <Select
+                    options={degrees}
+                    value={degrees.find(option => option.value === formData.degree_required) || null}
+                    onChange={handleDegreeChange}
+                    placeholder="Select a degree..."
+                    className="text-sm"
+                    classNamePrefix="react-select"
+                    styles={{
+                      control: (provided) => ({
+                        ...provided,
+                        borderColor: '#e5e7eb',
+                        borderRadius: '0.375rem',
+                        padding: '2px',
+                        backgroundColor: '#fff',
+                        '&:hover': { borderColor: '#6366f1' },
+                      }),
+                      menu: (provided) => ({
+                        ...provided,
+                        backgroundColor: '#fff',
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#e0e7ff' : '#fff',
+                        color: state.isSelected ? '#fff' : '#374151',
+                      }),
+                      singleValue: (provided) => ({
+                        ...provided,
+                        color: '#374151',
+                      }),
+                    }}
+                    theme={(theme) => ({
+                      ...theme,
+                      colors: {
+                        ...theme.colors,
+                        primary: '#6366f1',
+                        primary25: '#e0e7ff',
+                      },
+                    })}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="degree_branch"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                  >
+                    Branch/Specialization
+                  </label>
+                  <Select
+                    options={branches}
+                    value={branches.find(option => option.value === formData.degree_branch) || null}
+                    onChange={handleBranchChange}
+                    placeholder="Select a branch..."
+                    className="text-sm"
+                    classNamePrefix="react-select"
+                    styles={{
+                      control: (provided) => ({
+                        ...provided,
+                        borderColor: '#e5e7eb',
+                        borderRadius: '0.375rem',
+                        padding: '2px',
+                        backgroundColor: '#fff',
+                        '&:hover': { borderColor: '#6366f1' },
+                      }),
+                      menu: (provided) => ({
+                        ...provided,
+                        backgroundColor: '#fff',
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#e0e7ff' : '#fff',
+                        color: state.isSelected ? '#fff' : '#374151',
+                      }),
+                      singleValue: (provided) => ({
+                        ...provided,
+                        color: '#374151',
+                      }),
+                    }}
+                    theme={(theme) => ({
+                      ...theme,
+                      colors: {
+                        ...theme.colors,
+                        primary: '#6366f1',
+                        primary25: '#e0e7ff',
+                      },
+                    })}
+                  />
+                </div>
                 <FormInput
-                  label="Degree"
-                  id="degree_required"
-                  type="select"
-                  name="degree_required"
-                  value={formData.degree_required}
+                  label="Passout Year"
+                  id="passout_year"
+                  type="number"
+                  name="passout_year"
+                  value={formData.passout_year}
                   onChange={handleInputChange}
-                  options={degreeOptions}
-                  placeholder={'Select a degree'}
-                  required
+                  min="1900"
+                  max={new Date().getFullYear() + 5}
+                  placeholder="2023"
                 />
-                <FormInput
-                  label="Branch/Specialization"
-                  id="degree_branch"
-                  name="degree_branch"
-                  value={formData.degree_branch || ''}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Computer Science"
-                />
+                <div>
+                  <label
+                    htmlFor="passout_year_required"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                  >
+                    Passout Year Required
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="passout_year_required"
+                    name="passout_year_required"
+                    checked={formData.passout_year_required}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                </div>
                 <div className="sm:col-span-2">
                   <label
                     htmlFor="job_description"
@@ -505,8 +656,7 @@ const RecruiterDashboard = () => {
                   <div className="flex items-center gap-2">
                     <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     <span className="text-sm">
-                      {assessment.experience_min}-{assessment.experience_max}{' '}
-                      years
+                      {assessment.experience_min}-{assessment.experience_max} years
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -521,6 +671,24 @@ const RecruiterDashboard = () => {
                       )}
                     </div>
                   </div>
+                  {assessment.degree_required && (
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-sm">
+                        {assessment.degree_required}
+                        {assessment.degree_branch ? ` (${assessment.degree_branch})` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {assessment.passout_year && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-sm">
+                        Passout Year: {assessment.passout_year}
+                        {assessment.passout_year_required ? ' (Required)' : ' (Optional)'}
+                      </span>
+                    </div>
+                  )}
                   {assessment.skills && assessment.skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 items-center">
                       <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -565,7 +733,7 @@ const RecruiterDashboard = () => {
             {pastAssessments.map((assessment) => (
               <div
                 key={assessment.job_id}
-                className="bg-white dark:bg-gray-900 p-6 rounded-md shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full "
+                className="bg-white dark:bg-gray-900 p-6 rounded-md shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
               >
                 <div className="flex items-center gap-4 mb-2">
                   <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
@@ -585,8 +753,7 @@ const RecruiterDashboard = () => {
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     <span>
-                      {assessment.experience_min}-{assessment.experience_max}{' '}
-                      years
+                      {assessment.experience_min}-{assessment.experience_max} years
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -601,6 +768,24 @@ const RecruiterDashboard = () => {
                       )}
                     </div>
                   </div>
+                  {assessment.degree_required && (
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-sm">
+                        {assessment.degree_required}
+                        {assessment.degree_branch ? ` (${assessment.degree_branch})` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {assessment.passout_year && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-sm">
+                        Passout Year: {assessment.passout_year}
+                        {assessment.passout_year_required ? ' (Required)' : ' (Optional)'}
+                      </span>
+                    </div>
+                  )}
                   {assessment.skills && assessment.skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 items-center">
                       <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
@@ -623,18 +808,14 @@ const RecruiterDashboard = () => {
                     <LinkButton
                       to={`/recruiter/candidates/${assessment.job_id}`}
                       variant="link"
-                      className={
-                        'flex items-center gap-2 justify-center hover:underline'
-                      }
+                      className={'flex items-center gap-2 justify-center hover:underline'}
                     >
                       View Candidates
                     </LinkButton>
                     <LinkButton
                       to={`/recruiter/report/${assessment.job_id}`}
                       variant="link"
-                      className={
-                        'flex items-center gap-2 justify-center hover:underline'
-                      }
+                      className={'flex items-center gap-2 justify-center hover:underline'}
                     >
                       View Report
                     </LinkButton>

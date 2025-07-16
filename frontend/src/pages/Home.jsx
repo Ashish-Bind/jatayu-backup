@@ -237,7 +237,7 @@ const Home = () => {
                   to="/candidate/dashboard"
                   variant="primary"
                   className="flex items-center gap-2 justify-center"
-                  whileHover="hover"
+                  whilehover="hover"
                   variants={buttonVariants}
                 >
                   Go to Dashboard <ArrowRight className="w-4 h-4" />
@@ -250,7 +250,7 @@ const Home = () => {
                     to="/candidate/signup"
                     variant="primary"
                     className="flex items-center gap-2 justify-center"
-                    whileHover="hover"
+                    whilehover="hover"
                     variants={buttonVariants}
                   >
                     Get Started as Candidate <ArrowRight className="w-4 h-4" />
@@ -261,7 +261,7 @@ const Home = () => {
                     to="/recruiter/login"
                     variant="bordered"
                     className="text-indigo-600 dark:text-indigo-300 border-indigo-600 dark:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900"
-                    whileHover="hover"
+                    whilehover="hover"
                     variants={buttonVariants}
                   >
                     Recruiter Login <ChevronRight className="w-4 h-4" />
@@ -304,7 +304,7 @@ const Home = () => {
                 key={index}
                 className="bg-white dark:bg-gray-900 border dark:border-gray-800 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 variants={itemVariants}
-                whileHover={{ scale: 1.05 }}
+                whilehover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 100 }}
               >
                 <div className="mb-4">{feature.icon}</div>
@@ -351,7 +351,7 @@ const Home = () => {
                 key={step.number}
                 className="text-center"
                 variants={itemVariants}
-                whileHover={{ scale: 1.1 }}
+                whilehover={{ scale: 1.1 }}
                 transition={{ type: 'spring', stiffness: 100 }}
               >
                 <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -402,7 +402,7 @@ const Home = () => {
                 key={testimonial.id}
                 className="bg-white dark:bg-gray-900 border dark:border-gray-800 p-6 rounded-lg shadow-sm"
                 variants={itemVariants}
-                whileHover={{ scale: 1.05 }}
+                whilehover={{ scale: 1.05 }}
                 transition={{ type: 'spring', stiffness: 300 }}
               >
                 <div className="flex items-center mb-4">
@@ -480,7 +480,7 @@ const Home = () => {
               <Link
                 to="/recruiter/login"
                 className="px-6 py-3 rounded-md text-sm font-medium text-indigo-600 dark:text-indigo-300 bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center gap-2"
-                whileHover="hover"
+                whilehover="hover"
                 variants={buttonVariants}
               >
                 Request Demo <ChevronRight className="w-4 h-4" />
@@ -490,7 +490,7 @@ const Home = () => {
               <Link
                 to="/candidate/signup"
                 className="px-6 py-3 rounded-md text-sm font-medium text-white bg-indigo-800 dark:bg-indigo-900 hover:bg-indigo-700 dark:hover:bg-indigo-800 flex items-center justify-center gap-2"
-                whileHover="hover"
+                whilehover="hover"
                 variants={buttonVariants}
               >
                 Try for Free <ArrowRight className="w-4 h-4" />
@@ -592,7 +592,7 @@ const Home = () => {
                 href="#"
                 className="text-gray-400 dark:text-gray-300 hover:text-white"
                 variants={itemVariants}
-                whileHover={{ scale: 1.2 }}
+                whilehover={{ scale: 1.2 }}
               >
                 <span className="sr-only">GitHub</span>
                 <Github className="h-6 w-6" />
