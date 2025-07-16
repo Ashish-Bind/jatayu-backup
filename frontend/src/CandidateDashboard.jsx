@@ -127,7 +127,11 @@ const CandidateDashboard = () => {
     setIneligibleMessage('')
     if (!assessment.is_eligible) {
       setIneligibleMessage(
-        `You are not eligible for this job. Required: ${assessment.experience_min}-${assessment.experience_max} years of experience, Degree: ${assessment.degree_required || 'None'}`
+        `You are not eligible for this job. Required: ${
+          assessment.experience_min
+        }-${assessment.experience_max} years of experience, Degree: ${
+          assessment.degree_required || 'None'
+        }`
       )
       setIsIneligibleModalOpen(true)
       return
@@ -398,21 +402,22 @@ const CandidateDashboard = () => {
                               </div>
                             </div>
                           )}
-                          {assessment.skills && assessment.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-2 items-center">
-                              <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                              {assessment.skills.map((skill, index) => (
-                                <span
-                                  key={index}
-                                  className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
-                                    skill.priority
-                                  )}`}
-                                >
-                                  {skill.name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          {assessment.skills &&
+                            assessment.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-2 items-center">
+                                <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                {assessment.skills.map((skill, index) => (
+                                  <span
+                                    key={index}
+                                    className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
+                                      skill.priority
+                                    )}`}
+                                  >
+                                    {skill.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                         </div>
 
                         <Button
@@ -512,21 +517,22 @@ const CandidateDashboard = () => {
                               </div>
                             </div>
                           )}
-                          {assessment.skills && assessment.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-2 items-center">
-                              <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                              {assessment.skills.map((skill, index) => (
-                                <span
-                                  key={index}
-                                  className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
-                                    skill.priority
-                                  )}`}
-                                >
-                                  {skill.name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          {assessment.skills &&
+                            assessment.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-2 items-center">
+                                <Code className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                {assessment.skills.map((skill, index) => (
+                                  <span
+                                    key={index}
+                                    className={`inline-flex items-center px-3 py-1 rounded-full font-medium text-xs ${getPriorityColor(
+                                      skill.priority
+                                    )}`}
+                                  >
+                                    {skill.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                         </div>
 
                         <Button
@@ -540,7 +546,10 @@ const CandidateDashboard = () => {
                           }}
                           variant="primary"
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors w-full"
-                          disabled={!assessment.is_eligible && !candidate.is_profile_complete}
+                          disabled={
+                            !assessment.is_eligible &&
+                            !candidate.is_profile_complete
+                          }
                         >
                           {assessment.is_registered
                             ? 'Start Assessment'
