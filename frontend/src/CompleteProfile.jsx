@@ -95,29 +95,29 @@ const CompleteProfile = () => {
         })
       })
 
-      // Fetch enforce_face_verification flag
-fetch('http://localhost:5000/api/auth/check', {
-  credentials: 'include',
-})
-  .then((response) => {
-    if (!response.ok) throw new Error('Failed to check auth')
-    return response.json()
-  })
-  .then((data) => {
-    if (data.user) {
-      console.log('✅ Auth check:', {
-        enforceFaceVerification: data.user.enforce_face_verification,
-        lastLoginIP: data.user.last_login_ip, // OPTIONAL if you expose it
-        currentIP: data.user.current_ip,       // OPTIONAL if you expose it
-      });
-      if (data.user.enforce_face_verification) {
-        setEnforceFaceVerification(true)
-      }
-    }
-  })
-  .catch((error) => {
-    console.error('❌ Error checking face verification requirement:', error)
-  })
+    // Fetch enforce_face_verification flag
+    fetch('http://localhost:5000/api/auth/check', {
+      credentials: 'include',
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('Failed to check auth')
+        return response.json()
+      })
+      .then((data) => {
+        if (data.user) {
+          console.log('✅ Auth check:', {
+            enforceFaceVerification: data.user.enforce_face_verification,
+            lastLoginIP: data.user.last_login_ip, // OPTIONAL if you expose it
+            currentIP: data.user.current_ip, // OPTIONAL if you expose it
+          })
+          if (data.user.enforce_face_verification) {
+            setEnforceFaceVerification(true)
+          }
+        }
+      })
+      .catch((error) => {
+        console.error('❌ Error checking face verification requirement:', error)
+      })
 
     // Fetch degrees
     fetch('http://localhost:5000/api/candidate/degrees', {
@@ -128,7 +128,12 @@ fetch('http://localhost:5000/api/auth/check', {
         return response.json()
       })
       .then((data) => {
-        setDegrees(data.map(degree => ({ value: degree.degree_id, label: degree.degree_name })))
+        setDegrees(
+          data.map((degree) => ({
+            value: degree.degree_id,
+            label: degree.degree_name,
+          }))
+        )
       })
       .catch((error) => {
         console.error('Error fetching degrees:', error)
@@ -147,7 +152,12 @@ fetch('http://localhost:5000/api/auth/check', {
         return response.json()
       })
       .then((data) => {
-        setBranches(data.map(branch => ({ value: branch.branch_id, label: branch.branch_name })))
+        setBranches(
+          data.map((branch) => ({
+            value: branch.branch_id,
+            label: branch.branch_name,
+          }))
+        )
       })
       .catch((error) => {
         console.error('Error fetching branches:', error)
@@ -170,18 +180,27 @@ fetch('http://localhost:5000/api/auth/check', {
   }
 
   const handleDegreeChange = (selectedOption) => {
-    setFormData({ ...formData, degree_id: selectedOption ? selectedOption.value : '' })
+    setFormData({
+      ...formData,
+      degree_id: selectedOption ? selectedOption.value : '',
+    })
   }
 
   const handleBranchChange = (selectedOption) => {
-    setFormData({ ...formData, degree_branch: selectedOption ? selectedOption.value : '' })
+    setFormData({
+      ...formData,
+      degree_branch: selectedOption ? selectedOption.value : '',
+    })
   }
 
   const handleFileChange = (e) => {
     const { name, files } = e.target
     if (name === 'resume') {
       setResume(files[0])
-      setFormData({ ...formData, resume: files[0] ? files[0].name : formData.resume })
+      setFormData({
+        ...formData,
+        resume: files[0] ? files[0].name : formData.resume,
+      })
     }
     if (name === 'profile_picture') {
       const file = files[0]
@@ -254,37 +273,35 @@ fetch('http://localhost:5000/api/auth/check', {
       return
     }
 
-if (enforceFaceVerification && (!profilePicture || !webcamImage)) {
-  console.warn('⚠️ Face verification is required but missing images.', {
-    profilePicture: !!profilePicture,
-    webcamImage: !!webcamImage,
-  });
-  setMessage({
-    text: 'Both profile picture and webcam image are required for verification.',
-    type: 'error',
-  });
-  setIsLoading(false);
-  return;
-} else {
-  console.log('✅ Face verification check passed.', {
-    enforceFaceVerification,
-    profilePicture: !!profilePicture,
-    webcamImage: !!webcamImage,
-  });
-}
+    if (enforceFaceVerification && (!profilePicture || !webcamImage)) {
+      console.warn('⚠️ Face verification is required but missing images.', {
+        profilePicture: !!profilePicture,
+        webcamImage: !!webcamImage,
+      })
+      setMessage({
+        text: 'Both profile picture and webcam image are required for verification.',
+        type: 'error',
+      })
+      setIsLoading(false)
+      return
+    } else {
+      console.log('✅ Face verification check passed.', {
+        enforceFaceVerification,
+        profilePicture: !!profilePicture,
+        webcamImage: !!webcamImage,
+      })
+    }
 
-
-const data = new FormData()
-for (const key in formData) {
-  if (key !== 'resume') {
-    data.append(key, formData[key])
-  }
-}
-if (resume) data.append('resume', resume)
-if (profilePicture) data.append('profile_picture', profilePicture)
-if (webcamImage) data.append('webcam_image', webcamImage)
-data.append('enforce_face_verification', enforceFaceVerification) // ✅ Add this
-
+    const data = new FormData()
+    for (const key in formData) {
+      if (key !== 'resume') {
+        data.append(key, formData[key])
+      }
+    }
+    if (resume) data.append('resume', resume)
+    if (profilePicture) data.append('profile_picture', profilePicture)
+    if (webcamImage) data.append('webcam_image', webcamImage)
+    data.append('enforce_face_verification', enforceFaceVerification) // ✅ Add this
 
     try {
       const response = await fetch(
@@ -295,41 +312,45 @@ data.append('enforce_face_verification', enforceFaceVerification) // ✅ Add thi
           body: data,
         }
       )
-      
+
       const result = await response.json()
-if (response.ok) {
-  console.log('✅ Profile updated successfully!')
-  console.log('📸 Face Verification Result:', result.face_verification)
-  if (result.face_verification) {
-    console.log(
-      `🔍 Similarity Score: ${result.face_verification.similarity}%`
-    )
-    console.log(
-      `🎯 Verification ${result.face_verification.verified ? '✅ successful' : '❌ failed'}`
-    )
-  } else {
-    console.log('ℹ️ No face verification performed by backend.')
-  }
+      if (response.ok) {
+        console.log('✅ Profile updated successfully!')
+        console.log('📸 Face Verification Result:', result.face_verification)
+        if (result.face_verification) {
+          console.log(
+            `🔍 Similarity Score: ${result.face_verification.similarity}%`
+          )
+          console.log(
+            `🎯 Verification ${
+              result.face_verification.verified ? '✅ successful' : '❌ failed'
+            }`
+          )
+        } else {
+          console.log('ℹ️ No face verification performed by backend.')
+        }
 
-  setMessage({
-    text: `Profile updated successfully! ${
-      result.face_verification
-        ? `Face verification: ${result.face_verification.similarity}% similarity.`
-        : ''
-    }`,
-    type: 'success',
-  })
-  setTimeout(() => navigate('/candidate/dashboard'), 1500)
-} else {
-  console.error('❌ Profile update failed:', result.error || 'Unknown error')
-  setMessage({
-    text:
-      result.error ||
-      'An error occurred while updating your profile. Please try again.',
-    type: 'error',
-  })
-}
-
+        setMessage({
+          text: `Profile updated successfully! ${
+            result.face_verification
+              ? `Face verification: ${result.face_verification.similarity}% similarity.`
+              : ''
+          }`,
+          type: 'success',
+        })
+        setTimeout(() => navigate('/candidate/dashboard'), 1500)
+      } else {
+        console.error(
+          '❌ Profile update failed:',
+          result.error || 'Unknown error'
+        )
+        setMessage({
+          text:
+            result.error ||
+            'An error occurred while updating your profile. Please try again.',
+          type: 'error',
+        })
+      }
     } catch (error) {
       console.error('Submission Error:', error)
       setMessage({
@@ -341,7 +362,6 @@ if (response.ok) {
       stopWebcam()
     }
   }
-  
 
   if (!candidate)
     return (
@@ -354,7 +374,7 @@ if (response.ok) {
     <div className="min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800 flex flex-col">
       <Navbar />
       <div className="flex-grow py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <div className="relative mx-auto w-24 h-24 mb-4 group">
               <div className="w-full h-full rounded-full overflow-hidden border-4 border-indigo-500 dark:border-indigo-600 group-hover:border-indigo-600 dark:group-hover:border-indigo-500 shadow-sm transition-all">
@@ -386,15 +406,17 @@ if (response.ok) {
               </label>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              {candidate.is_profile_complete ? 'Edit Your Profile' : 'Complete Your Profile'}
+              {candidate.is_profile_complete
+                ? 'Edit Your Profile'
+                : 'Complete Your Profile'}
             </h1>
-            <p className="text-sm text-gray-700 dark:text-gray-200">
+            <p className="text-base text-gray-700 dark:text-gray-200">
               {candidate.is_profile_complete
                 ? 'Update your details to keep your profile current and access more job opportunities'
                 : 'Fill in your details to get the most out of our platform'}
             </p>
             {enforceFaceVerification && (
-              <p className="text-sm text-red-500 font-semibold mt-2">
+              <p className="text-base text-red-500 font-semibold mt-2">
                 Face verification required due to location change.
               </p>
             )}
@@ -402,7 +424,7 @@ if (response.ok) {
 
           {message.text && (
             <div
-              className={`mb-6 p-3 rounded-md flex items-center text-sm ${
+              className={`mb-6 p-3 rounded-md flex items-center text-base ${
                 message.type === 'success'
                   ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 text-green-700 dark:text-green-300'
                   : 'bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-300'
@@ -423,7 +445,7 @@ if (response.ok) {
                 <div className="col-span-2">
                   <label
                     htmlFor="name"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <User className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -434,7 +456,7 @@ if (response.ok) {
                     type="text"
                     name="name"
                     id="name"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="John Doe"
                     value={formData.name}
                     onChange={handleChange}
@@ -444,7 +466,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <Phone className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -455,7 +477,7 @@ if (response.ok) {
                     type="text"
                     name="phone"
                     id="phone"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="+1234567890"
                     value={formData.phone}
                     onChange={handleChange}
@@ -464,7 +486,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="location"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <MapPin className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -475,7 +497,7 @@ if (response.ok) {
                     type="text"
                     name="location"
                     id="location"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="New York, NY"
                     value={formData.location}
                     onChange={handleChange}
@@ -484,7 +506,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="linkedin"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <Linkedin className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -495,7 +517,7 @@ if (response.ok) {
                     type="url"
                     name="linkedin"
                     id="linkedin"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="https://linkedin.com/in/johndoe"
                     value={formData.linkedin}
                     onChange={handleChange}
@@ -504,7 +526,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="github"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <Github className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -515,7 +537,7 @@ if (response.ok) {
                     type="url"
                     name="github"
                     id="github"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="https://github.com/johndoe"
                     value={formData.github}
                     onChange={handleChange}
@@ -524,7 +546,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="degree_id"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <GraduationCap className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -533,10 +555,14 @@ if (response.ok) {
                   </label>
                   <Select
                     options={degrees}
-                    value={degrees.find(option => option.value === formData.degree_id) || null}
+                    value={
+                      degrees.find(
+                        (option) => option.value === formData.degree_id
+                      ) || null
+                    }
                     onChange={handleDegreeChange}
                     placeholder="Select your degree..."
-                    className="text-sm"
+                    className="text-base"
                     classNamePrefix="react-select"
                     styles={{
                       control: (provided) => ({
@@ -553,7 +579,11 @@ if (response.ok) {
                       }),
                       option: (provided, state) => ({
                         ...provided,
-                        backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#e0e7ff' : '#fff',
+                        backgroundColor: state.isSelected
+                          ? '#6366f1'
+                          : state.isFocused
+                          ? '#e0e7ff'
+                          : '#fff',
                         color: state.isSelected ? '#fff' : '#374151',
                       }),
                       singleValue: (provided) => ({
@@ -575,7 +605,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="degree_branch"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <GraduationCap className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -584,10 +614,14 @@ if (response.ok) {
                   </label>
                   <Select
                     options={branches}
-                    value={branches.find(option => option.value === formData.degree_branch) || null}
+                    value={
+                      branches.find(
+                        (option) => option.value === formData.degree_branch
+                      ) || null
+                    }
                     onChange={handleBranchChange}
                     placeholder="Select your branch..."
-                    className="text-sm"
+                    className="text-base"
                     classNamePrefix="react-select"
                     styles={{
                       control: (provided) => ({
@@ -604,7 +638,11 @@ if (response.ok) {
                       }),
                       option: (provided, state) => ({
                         ...provided,
-                        backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#e0e7ff' : '#fff',
+                        backgroundColor: state.isSelected
+                          ? '#6366f1'
+                          : state.isFocused
+                          ? '#e0e7ff'
+                          : '#fff',
                         color: state.isSelected ? '#fff' : '#374151',
                       }),
                       singleValue: (provided) => ({
@@ -625,7 +663,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="passout_year"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <Calendar className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -636,7 +674,7 @@ if (response.ok) {
                     type="number"
                     name="passout_year"
                     id="passout_year"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="2023"
                     value={formData.passout_year}
                     onChange={handleChange}
@@ -647,7 +685,7 @@ if (response.ok) {
                 <div>
                   <label
                     htmlFor="years_of_experience"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <Briefcase className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -659,7 +697,7 @@ if (response.ok) {
                     step="0.1"
                     name="years_of_experience"
                     id="years_of_experience"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-800 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300"
                     placeholder="3.5"
                     value={formData.years_of_experience}
                     onChange={handleChange}
@@ -669,7 +707,7 @@ if (response.ok) {
                 <div className="col-span-2">
                   <label
                     htmlFor="resume"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <FileText className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />
@@ -681,7 +719,7 @@ if (response.ok) {
                       <LinkButton
                         variant="link"
                         to={`http://localhost:5000/static/uploads/${formData.resume}`}
-                        className="text-sm text-indigo-600 dark:text-indigo-300 hover:underline"
+                        className="text-base text-indigo-600 dark:text-indigo-300 hover:underline"
                         target="_blank"
                       >
                         {formData.resume.split('/')[1]}
@@ -691,7 +729,7 @@ if (response.ok) {
                       type="file"
                       name="resume"
                       id="resume"
-                      className="w-content text-sm text-gray-700 dark:text-gray-200 file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800/30"
+                      className="w-content text-base text-gray-700 dark:text-gray-200 file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-base file:font-medium file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800/30"
                       accept=".pdf"
                       onChange={handleFileChange}
                     />
@@ -700,7 +738,7 @@ if (response.ok) {
                 <div className="col-span-2">
                   <label
                     htmlFor="webcam_image"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+                    className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
                   >
                     <span className="flex items-center">
                       <Camera className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-300" />

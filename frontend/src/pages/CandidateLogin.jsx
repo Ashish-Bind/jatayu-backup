@@ -14,15 +14,12 @@ const CandidateLogin = () => {
 
   const { user, login, loading } = useAuth()
 
-  console.log(user)
-
   if (loading) {
     return <div>Loading...</div>
   }
 
   if (user) {
-    navigate('/candidate/dashboard')
-    return null
+    return navigate('/candidate')
   }
 
   const handleSubmit = async (e) => {

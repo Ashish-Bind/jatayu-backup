@@ -2,6 +2,17 @@ import React, { useState, useEffect, useContext } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Bar } from 'react-chartjs-2'
 import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import {
   CheckCircle,
   BookOpen,
   Star,
@@ -17,6 +28,17 @@ import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import { ThemeContext } from '../context/ThemeContext'
 import { isMajoritySnapshotsValid } from '../utils/utils'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+)
 
 const CandidateResult = () => {
   const { attemptId } = useParams()

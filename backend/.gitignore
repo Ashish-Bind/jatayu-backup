@@ -1,0 +1,50 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Environment variables and config
+.env
+*.env
+secret_key.py
+config.py  # (only if it contains sensitive info like DB URI or secrets)
+
+# Virtual environment
+venv/
+.env/
+.venv/
+ENV/
+env.bak/
+env/
+
+# GCP & private keys
+keys/*.json
+keys/*.pdf
+keys/*.png
+keys/*.jpg
+
+# Uploaded media/static files (optional if you regenerate or upload externally)
+app/static/uploads/resumes/
+app/static/uploads/profile_pics/
+app/static/uploads/snapshots/
+app/static/uploads/webcam_images/
+app/static/uploads/*.jpg
+app/static/uploads/*.pdf
+app/static/uploads/*.png
+
+# Logs and local testing files
+*.log
+*.sqlite3
+*.db
+*.bak
+*.tmp
+
+# Test outputs (optional)
+app/test/__pycache__/
+app/test/*.pyc
+
+# Mac/Linux/Windows system files
+.DS_Store
+Thumbs.db

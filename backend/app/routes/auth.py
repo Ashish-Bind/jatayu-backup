@@ -104,6 +104,9 @@ def login():
 
     if not user:
         return jsonify({'error': 'Invalid credentials'}), 401
+    
+    if not user.role == 'candidate':
+        return jsonify({'error': 'Invalid credentials'}), 401
 
     if not user.is_active:
         return jsonify({'error': 'Please confirm your email before logging in.'}), 403
@@ -185,32 +188,51 @@ def login():
 # Auth check route
 @auth_bp.route('/check')
 def check_auth():
-    if 'user_id' in session:
-        user = User.query.get(session['user_id'])
-        candidate = Candidate.query.filter_by(user_id=user.id).first()
-        enforce_face_verification = session.get('enforce_face_verification', False)
+    if 'user_id' not in session or 'role' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
 
-        response = {
-            'user': {
-                'id': user.id,
-                'email': user.email,
-                'role': user.role,
-                'name': user.name,
-                'profile_img': candidate.profile_picture if user.role == 'candidate' and candidate else '',
-                'enforce_face_verification': enforce_face_verification
-            }
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    role = session['role']
+    enforce_face_verification = session.get('enforce_face_verification', False)
+
+    response = {
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'name': user.name,
+            'role': role,
         }
+    }
+
+    if role == 'candidate':
+        candidate = Candidate.query.filter_by(user_id=user.id).first()
+        response['user']['profile_img'] = candidate.profile_picture if candidate else ''
         if candidate:
             response['user'].update({
                 'candidate_id': candidate.candidate_id,
                 'degree_id': candidate.degree_id,
                 'degree_name': candidate.degree.degree_name if candidate.degree else None,
                 'years_of_experience': candidate.years_of_experience,
-                'is_profile_complete': candidate.is_profile_complete
+                'is_profile_complete': candidate.is_profile_complete,
+                'enforce_face_verification': enforce_face_verification
             })
-        print(f"✅ Auth check: {response['user']}")
-        return jsonify(response)
-    return jsonify({'error': 'Not authenticated'}), 401
+
+    elif role == 'recruiter':
+        recruiter = Recruiter.query.filter_by(user_id=user.id).first()
+        response['user']['profile_img'] = recruiter.company_image if recruiter else ''
+        if recruiter:
+            response['user'].update({
+                'recruiter_id': recruiter.recruiter_id,
+                'company': recruiter.company,
+                'phone': recruiter.phone
+            })
+
+    print(f"✅ Auth check: {response['user']}")
+    return jsonify(response)
+
 
 
 # Forgot password

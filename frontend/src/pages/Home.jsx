@@ -190,14 +190,7 @@ const Home = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
           >
-            <Typewriter
-              words={['Intelligent', 'Generative', 'Adaptive', 'Secure']}
-              loop={5}
-              typeSpeed={100}
-              deleteSpeed={100}
-              delaySpeed={1000}
-            />{' '}
-            MCQ Assessments <br />& Analytics Platform
+            Intelligent MCQ Assessments <br />& Analytics Platform
           </motion.h1>
           <motion.p
             className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto"

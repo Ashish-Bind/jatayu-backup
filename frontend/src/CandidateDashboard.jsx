@@ -256,7 +256,7 @@ const CandidateDashboard = () => {
   if (!candidate) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-100 dark:bg-gray-900">
-        <Loader2 className="w-8 h-8 text-indigo-600 dark:text-indigo-300 animate-spin" />
+        <Clock className="w-8 h-8 text-indigo-600 dark:text-indigo-300 animate-spin" />
       </div>
     )
   }
@@ -308,9 +308,9 @@ const CandidateDashboard = () => {
         ) : (
           <>
             <div className="mb-6">
-              <div className="flex border-b border-gray-200 dark:border-gray-700">
+              <div className="flex border-b border-gray-200 dark:border-gray-700 gap-2">
                 <button
-                  className={`px-4 py-2 text-sm font-medium ${
+                  className={`px-4 py-2 text-base font-medium ${
                     activeTab === 'recommended'
                       ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-300'
                       : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300'
@@ -320,7 +320,7 @@ const CandidateDashboard = () => {
                   Recommended Jobs
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium ${
+                  className={`px-4 py-2 text-base font-medium ${
                     activeTab === 'explore'
                       ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-300'
                       : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300'
@@ -330,7 +330,7 @@ const CandidateDashboard = () => {
                   Explore Jobs
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium ${
+                  className={`px-4 py-2 text-base font-medium ${
                     activeTab === 'attempted'
                       ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-300'
                       : 'text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-300'
@@ -355,6 +355,16 @@ const CandidateDashboard = () => {
                         key={assessment.job_id}
                         className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
                       >
+                        {/* Company Image */}
+                        {assessment.company_image && (
+                          <img
+                            src={`http://localhost:5000/static/uploads/${assessment.company_image}`}
+                            alt="Company Logo"
+                            className="w-full h-32 object-cover rounded-lg mb-4"
+                          />
+                        )}
+
+                        {/* Job Title and Company */}
                         <div className="flex items-center gap-4 mb-4">
                           <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
                             <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
@@ -369,10 +379,11 @@ const CandidateDashboard = () => {
                           </div>
                         </div>
 
+                        {/* Assessment Details */}
                         <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-3">
                           <div className="flex items-center gap-2">
                             <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                            <span className="text-sm">
+                            <span>
                               {assessment.experience_min}-
                               {assessment.experience_max} years
                             </span>
@@ -391,17 +402,21 @@ const CandidateDashboard = () => {
                             <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                             <span>Duration: {assessment.duration} minutes</span>
                           </div>
+
+                          {/* Schedule */}
                           {assessment.schedule_start && (
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                              <div className="inline-flex items-center rounded-md">
+                              <span>
                                 {formatDate(assessment.schedule_start)} -{' '}
                                 {assessment.schedule_end
                                   ? formatDate(assessment.schedule_end)
                                   : 'Ongoing'}
-                              </div>
+                              </span>
                             </div>
                           )}
+
+                          {/* Skills */}
                           {assessment.skills &&
                             assessment.skills.length > 0 && (
                               <div className="flex flex-wrap gap-2 items-center">
@@ -420,9 +435,10 @@ const CandidateDashboard = () => {
                             )}
                         </div>
 
+                        {/* CTA Button */}
                         <Button
                           onClick={() => {
-                            if (assessment.is_eligible) {
+                            if (assessment.is_registered) {
                               setIsModalOpen(true)
                               setSelectedAssessment(assessment)
                             } else {
@@ -470,6 +486,13 @@ const CandidateDashboard = () => {
                         key={assessment.job_id}
                         className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800 max-w-md w-full"
                       >
+                        {assessment.company_image && (
+                          <img
+                            src={`http://localhost:5000/static/uploads/${assessment.company_image}`}
+                            alt="Company Logo"
+                            className="w-full h-32 object-cover rounded-lg mb-4"
+                          />
+                        )}
                         <div className="flex items-center gap-4 mb-4">
                           <div className="bg-indigo-100 dark:bg-indigo-950 p-3 rounded-lg">
                             <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
@@ -588,6 +611,13 @@ const CandidateDashboard = () => {
                       key={assessment.attempt_id}
                       className="bg-white dark:bg-gray-900 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800"
                     >
+                      {assessment.company_image && (
+                        <img
+                          src={`http://localhost:5000/static/uploads/${assessment.company_image}`}
+                          alt="Company Logo"
+                          className="w-full h-32 object-cover rounded-lg mb-4"
+                        />
+                      )}
                       <div className="flex items-start gap-3 mb-3">
                         <div className="bg-indigo-50 dark:bg-indigo-900/50 p-2 rounded-md">
                           <Briefcase className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />

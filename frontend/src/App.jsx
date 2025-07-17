@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
+import ClockLoader from './components/ClockLoader'
+import RecruiterOverview from './pages/RecruiterOverview'
 
 const Home = lazy(() => import('./pages/Home'))
 const CandidateLogin = lazy(() => import('./pages/CandidateLogin'))
@@ -22,7 +24,9 @@ const CandidateResult = lazy(() => import('./pages/CandidateResult'))
 const AssessmentResults = lazy(() => import('./pages/AssessmentResults'))
 const CandidateOverview = lazy(() => import('./pages/CandidateOverview'))
 const Analytics = lazy(() => import('./Analytics'))
-const CandidateProctoring = lazy(() => import('./components/CandidateProctoring'))
+const CandidateProctoring = lazy(() =>
+  import('./components/CandidateProctoring')
+)
 
 export default function App() {
   const { user } = useAuth()
@@ -30,7 +34,7 @@ export default function App() {
   console.log(user)
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<ClockLoader />}>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Home />} />
@@ -71,22 +75,18 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['recruiter']} redirectPath="/" />
           }
+          path="recruiter"
         >
-          <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
+          <Route index element={<RecruiterOverview />} />
+          <Route path="dashboard" element={<RecruiterDashboard />} />
+          <Route path="candidates/:job_id" element={<CandidateRanking />} />
+          <Route path="report/:job_id" element={<PostAssessmentReport />} />
+          <Route path="combined-report/:job_id" element={<CombinedReport />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route
-            path="/recruiter/candidates/:job_id"
-            element={<CandidateRanking />}
+            path="candidate/:candidateId/proctoring"
+            element={<CandidateProctoring />}
           />
-          <Route
-            path="/recruiter/report/:job_id"
-            element={<PostAssessmentReport />}
-          />
-          <Route
-            path="/recruiter/combined-report/:job_id"
-            element={<CombinedReport />}
-          />
-          <Route path="/recruiter/analytics" element={<Analytics />} />
-          <Route path="/recruiter/candidate/:candidateId/proctoring" element={<CandidateProctoring />} />
         </Route>
       </Routes>
     </Suspense>

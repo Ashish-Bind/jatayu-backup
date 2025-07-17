@@ -23,6 +23,19 @@ recruiter_api_bp = Blueprint('recruiter_api', __name__, url_prefix='/api/recruit
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+@recruiter_api_bp.route('/login', methods=['POST'])
+def recruiter_login():
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
+    recruiter = User.query.filter_by(email=email).first()
+    if recruiter and recruiter.check_password(password):
+        session['user_id'] = recruiter.id
+        session['role'] = 'recruiter'
+        return jsonify({'message': 'Login successful'}), 200
+    else:
+        return jsonify({'error': 'Invalid email or password'}), 401
+
 @recruiter_api_bp.route('/degrees', methods=['GET'])
 def get_degrees():
     degrees = Degree.query.all()
@@ -58,7 +71,7 @@ def get_assessments():
         assessment = {
             'job_id': job.job_id,
             'job_title': job.job_title,
-            'company': job.company,
+            'company': recruiter.company,
             'location': job.location,
             'schedule_start': job.schedule_start.isoformat() if job.schedule_start else None,
             'schedule_end': job.schedule_end.isoformat() if job.schedule_end else None,
@@ -72,6 +85,7 @@ def get_assessments():
             'passout_year_required': job.passout_year_required,
             'custom_prompt': job.custom_prompt,
             'job_description': job.job_description,
+            'company_image':recruiter.company_image,
             'skills': [
                 {'name': rs.skill.name, 'priority': rs.priority}
                 for rs in job.required_skills
@@ -97,7 +111,7 @@ def create_assessment():
     if not recruiter:
         return jsonify({'error': 'Recruiter not found'}), 404
     data = request.json
-    required_fields = ['job_title', 'company', 'experience_min', 'experience_max', 'duration', 'num_questions', 'schedule_start', 'schedule_end', 'skills']
+    required_fields = ['job_title', 'experience_min', 'experience_max', 'duration', 'num_questions', 'schedule_start', 'schedule_end', 'skills']
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing required fields'}), 400
     if not isinstance(data['skills'], list) or not all('name' in skill and 'priority' in skill for skill in data['skills']):
@@ -130,7 +144,7 @@ def create_assessment():
         assessment = JobDescription(
             recruiter_id=recruiter.recruiter_id,
             job_title=data['job_title'],
-            company=data['company'],
+            company=recruiter.company,
             location=data.get('location', ''),
             experience_min=experience_min,
             experience_max=experience_max,

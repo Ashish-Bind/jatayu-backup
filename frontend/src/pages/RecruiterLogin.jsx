@@ -11,7 +11,7 @@ const RecruiterLogin = () => {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  const { user, login, loading } = useAuth()
+  const { user, recruiterLogin, loading } = useAuth()
 
   console.log(user)
 
@@ -29,7 +29,7 @@ const RecruiterLogin = () => {
     setError('')
 
     try {
-      const response = await login(email, password, 'recruiter')
+      const response = await recruiterLogin(email, password)
 
       if (response) {
         navigate('/')

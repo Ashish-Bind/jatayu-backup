@@ -16,7 +16,7 @@ const FormInput = ({
   <div>
     <label
       htmlFor={id}
-      className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+      className="block text-base font-medium text-gray-700 dark:text-gray-200 mb-1"
     >
       {label}
     </label>
@@ -25,7 +25,7 @@ const FormInput = ({
         id={id}
         value={value}
         onChange={onChange}
-        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm transition-all duration-200"
+        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-base transition-all duration-200"
         required={required}
         {...props}
       >
@@ -42,7 +42,7 @@ const FormInput = ({
         id={id}
         value={value}
         onChange={onChange}
-        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200"
+        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:ring-indigo-600 focus:border-indigo-600 dark:bg-gray-700 dark:text-gray-200 text-base placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200"
         placeholder={placeholder}
         required={required}
         min={min}

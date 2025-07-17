@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async (signal) => {
     try {
       const response = await fetch('http://localhost:5000/api/auth/check', {
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         signal,
       })
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const getLocation = async () => {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -133,6 +134,29 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const recruiterLogin = async (email, password) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/recruiter/login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+        }
+      )
+
+      if (response.ok) {
+        await checkAuth()
+        return true
+      }
+      const data = await response.json()
+      throw new Error(data?.error || 'Login failed')
+    } catch (error) {
+      throw new Error(error.message)
+    }
+  }
+
   const requestPasswordReset = async (email) => {
     try {
       const response = await fetch(
@@ -193,6 +217,7 @@ export const AuthProvider = ({ children }) => {
     requestPasswordReset,
     resetPassword,
     locationError,
+    recruiterLogin,
   }
 
   return (

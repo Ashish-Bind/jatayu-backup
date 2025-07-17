@@ -15,6 +15,7 @@ from app.models.assessment_state import AssessmentState
 from app.models.degree import Degree
 from app.models.degree_branch import DegreeBranch
 from app.models.resume_json import ResumeJson
+from app.models.recruiter import Recruiter
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
 import pytz
@@ -307,6 +308,17 @@ def verify_faces(profile_pic_file, webcam_image_file):
 @candidate_api_bp.route('/profile/<int:user_id>', methods=['GET'])
 def get_profile_by_user(user_id):
     candidate = Candidate.query.filter_by(user_id=user_id).first_or_404()
+
+    skills = [
+        {
+            'skill_id': cs.skill_id,
+            'skill_name': cs.skill.name,
+            'category': cs.skill.category,
+            'proficiency': cs.proficiency
+        }
+        for cs in candidate.candidate_skills
+    ]
+
     return jsonify({
         'candidate_id': candidate.candidate_id,
         'name': candidate.name,
@@ -315,14 +327,16 @@ def get_profile_by_user(user_id):
         'location': candidate.location,
         'linkedin': candidate.linkedin,
         'github': candidate.github,
+        'degree': candidate.degree.degree_name if candidate.degree else None,
+        'degree_branch': candidate.branch.branch_name if candidate.branch else None,
         'degree_id': candidate.degree_id,
-        'degree_branch': candidate.degree_branch,
         'passout_year': candidate.passout_year,
         'years_of_experience': candidate.years_of_experience,
         'resume': candidate.resume,
         'profile_picture': candidate.profile_picture,
         'camera_image': candidate.camera_image,
-        'is_profile_complete': candidate.is_profile_complete
+        'is_profile_complete': candidate.is_profile_complete,
+        'skills': skills
     })
 
 @candidate_api_bp.route('/degrees', methods=['GET'])
@@ -605,10 +619,14 @@ def get_eligible_assessments(user_id):
             (candidate.passout_year and assessment.passout_year == candidate.passout_year)
         )
 
+        recruiter = Recruiter.query.filter_by(recruiter_id=assessment.recruiter_id).first()
+        company_image = recruiter.company_image if recruiter else None
+
         assessment_data = {
             'job_id': assessment.job_id,
             'job_title': assessment.job_title,
             'company': assessment.company,
+            'company_image': company_image,
             'experience_min': assessment.experience_min,
             'experience_max': assessment.experience_max,
             'degree_required': assessment.degree.degree_name if assessment.degree else None,
@@ -645,6 +663,7 @@ def get_eligible_assessments(user_id):
                     'job_id': job.job_id,
                     'job_title': job.job_title,
                     'company': job.company,
+                    'company_image': company_image,
                     'attempt_id': attempt.attempt_id,
                     'status': attempt.status,
                     'attempt_date': attempt.start_time.isoformat() if attempt.start_time else None
